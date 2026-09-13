@@ -59,6 +59,25 @@ test('full approval flow produces receipt then one execution grant', () => {
   f.store.close();
 });
 
+test('revoking the approval authenticator invalidates an unconsumed approval', () => {
+  const f = fixture();
+  const { receipt } = approve(f);
+  assert.equal(receipt.authenticatorId, 'auth-human-a');
+  f.app.revokeAuthenticator('human-secret', 'auth-human-a', new Date('2026-09-13T02:00:01.500Z'));
+
+  assert.throws(() => f.app.authorizeAndConsume({
+    apiKey: 'executor-secret', requestId: 'req-1', executionId: 'exec-revoked', actualAction: f.action,
+    actualState: { version: 'v1' }, now: new Date('2026-09-13T02:00:02Z'),
+  }), /APPROVAL_REVOKED/);
+  assert.equal(f.app.getRequest('agent-secret', 'req-1').state, 'REVOKED');
+  assert.equal(f.store.getReceipt('req-1')?.authenticatorId, 'auth-human-a');
+  assert.equal(f.store.getExecutionGrant('exec-revoked'), null);
+  const audit = f.app.listAudit('agent-secret', 'req-1');
+  assert.deepEqual(audit.map((event) => event.eventType), ['REQUESTED', 'CHALLENGE_ISSUED', 'APPROVED', 'REVOKED']);
+  assert.deepEqual(audit.at(-1)?.details, { reason: 'AUTHENTICATOR_REVOKED', authenticatorId: 'auth-human-a' });
+  f.store.close();
+});
+
 test('same execution id is idempotent, second id is denied', () => {
   const f = fixture();
   approve(f);
