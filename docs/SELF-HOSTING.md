@@ -1,6 +1,6 @@
 # Self-hosting HAA
 
-Status: W7-T02 software packaging.
+Status: W7 software hardening.
 
 This path is intended for internal/self-hosted deployments. It does **not** enable `HAA_DEV_BOOTSTRAP` and does not ship default API keys.
 
@@ -30,9 +30,15 @@ Persistent state is split into two named volumes:
 
 Losing `haa-data` loses request/audit/client state. Losing `haa-keys` changes the authority identity and invalidates trust in previously signed HAA artifacts for participants that pinned the prior authority key. Back them up according to the deployment's recovery requirements.
 
-## Provision clients without dev bootstrap
+## Client roles and provisioning
 
 HAA API clients are provisioned directly into the persistent SQLite store using a high-entropy API key. The provisioning command hashes the secret before storing it and never prints the key.
+
+Each client is assigned an explicit subset of these roles:
+
+- `REQUESTER` — may create approval requests;
+- `APPROVER` — may register/revoke its authenticator, obtain challenges and submit approval evidence;
+- `EXECUTOR` — may call `authorizeAndConsume` when it is the bound executor audience.
 
 Generate a key outside HAA, for example:
 
@@ -44,20 +50,48 @@ With Docker Compose, pipe the secret on stdin so it is not placed directly in th
 
 ```bash
 printf '%s' "$CLIENT_KEY" | docker compose run --rm -T haa \
-  npm run provision:client -- agent-prod
+  npm run provision:client -- agent-prod REQUESTER
 ```
 
-Provision separate identities for the requester, approver principal and bounded executor when the workflow requires them:
+Provision separate identities and roles for the requester, approver principal and bounded executor:
 
-```text
-agent-prod
-human-prod
-executor-prod
+```bash
+# REQUESTER
+printf '%s' "$AGENT_KEY" | docker compose run --rm -T haa \
+  npm run provision:client -- agent-prod REQUESTER
+
+# APPROVER
+printf '%s' "$HUMAN_KEY" | docker compose run --rm -T haa \
+  npm run provision:client -- human-prod APPROVER
+
+# EXECUTOR
+printf '%s' "$EXECUTOR_KEY" | docker compose run --rm -T haa \
+  npm run provision:client -- executor-prod EXECUTOR
 ```
 
-The current v1 authorization model binds sensitive operations to identity through the approval intent (`requesterId`, `approverPrincipalId`, `executorAudience`) rather than a generic RBAC role field. Authenticator registration/evidence additionally requires the authenticated actor to equal the approver principal, while `authorizeAndConsume` requires the authenticated executor to equal `executorAudience`.
+Multiple roles may be provided as a comma-separated list only when that combination is deliberately required. Do not give an agent an `APPROVER` role merely for convenience.
 
-Treat client keys as credentials. The provisioning helper rejects secrets shorter than 32 characters.
+Set `HAA_CLIENT_EXPIRES_AT` during provisioning or rotation to apply credential expiry. The timestamp must be parseable as an absolute date/time.
+
+Treat client keys as credentials. Provisioning and rotation helpers reject secrets shorter than 32 characters.
+
+## Client credential rotation and disable
+
+Rotation preserves the client identity while invalidating the prior credential and incrementing the credential version. The old credential is retained only as hashed lifecycle history and is not accepted for authentication.
+
+```bash
+NEW_KEY="$(openssl rand -hex 32)"
+printf '%s' "$NEW_KEY" | docker compose run --rm -T haa \
+  npm run rotate:client -- agent-prod
+```
+
+Disable a client identity without deleting its history:
+
+```bash
+docker compose run --rm haa npm run disable:client -- agent-prod
+```
+
+Client provisioning, rotation and disable events are recorded in the administrative audit store. API keys are never stored in plaintext.
 
 ## Authority key
 
@@ -92,7 +126,7 @@ The compose file intentionally publishes HAA only on `127.0.0.1`. For remote acc
 
 ## Development bootstrap
 
-`HAA_DEV_BOOTSTRAP=1` exists only for tests/local demos. It installs predictable development identities and must not be enabled in a real self-hosted deployment.
+`HAA_DEV_BOOTSTRAP=1` exists only for tests/local demos. It installs predictable development identities with separated roles (`REQUESTER`, `APPROVER`, `EXECUTOR`) and must not be enabled in a real self-hosted deployment.
 
 ## Upgrade rule
 
