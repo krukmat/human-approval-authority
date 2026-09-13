@@ -1,1 +1,6 @@
-{"name":"@haa/protocol","version":"0.1.0","type":"module","exports":"./src/index.ts"}
+{
+  "name": "@haa/protocol",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": "./src/index.ts"
+}
