@@ -14,7 +14,7 @@ export function buildHttpServer(app: HaaApplication) {
   server.setErrorHandler((error, _request, reply) => {
     const message = error instanceof Error ? error.message : 'UNKNOWN_ERROR';
     const status = message === 'UNAUTHORIZED' ? 401
-      : message === 'FORBIDDEN' ? 403
+      : message === 'FORBIDDEN' || message === 'SELF_APPROVAL_FORBIDDEN' ? 403
       : message.includes('NOT_FOUND') ? 404
       : message.includes('MISMATCH') || message.includes('STALE') || message.includes('EXPIRED') || message.includes('NOT_APPROVED') ? 409
       : 400;
