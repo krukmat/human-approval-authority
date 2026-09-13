@@ -18,11 +18,10 @@ func askForApproval(_ payload: ChallengePayload, timeoutSeconds: TimeInterval? =
         + "\n\nEsc: Reject"
     alert.addButton(withTitle: "Approve with Touch ID")
 
-    var explicitReject = false
-    var timedOut = false
+    var rejectionReason: RejectionReason?
     let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
         if event.keyCode == 53 { // Escape
-            explicitReject = true
+            rejectionReason = .userEscape
             NSApp.abortModal()
             alert.window.orderOut(nil)
             return nil
@@ -36,20 +35,19 @@ func askForApproval(_ payload: ChallengePayload, timeoutSeconds: TimeInterval? =
     if let timeoutSeconds, timeoutSeconds > 0 {
         DispatchQueue.main.asyncAfter(deadline: .now() + timeoutSeconds) {
             guard NSApp.modalWindow === alert.window else { return }
-            timedOut = true
+            rejectionReason = .timeout
             NSApp.abortModal()
             alert.window.orderOut(nil)
         }
     }
 
     let response = alert.runModal()
-    if explicitReject { return .reject }
-    if timedOut { return .unknown(.localTimeout) }
+    if let rejectionReason { return .reject(rejectionReason) }
     if response == .alertFirstButtonReturn { return .approve }
-    return .unknown(.windowClosed)
+    return .reject(.windowClosed)
 }
 #else
 func askForApproval(_ payload: ChallengePayload, timeoutSeconds: TimeInterval? = nil) -> CeremonyDecision {
-    .unknown(.interactionError)
+    .reject(.interactionError)
 }
 #endif
