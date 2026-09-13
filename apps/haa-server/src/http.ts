@@ -138,7 +138,6 @@ export function buildHttpServer(app: HaaApplication, options: HttpServerOptions 
     algorithm: app.signer.algorithm,
     publicKeyPem: app.signer.publicKeyPem,
     status: 'ACTIVE' as const,
-    createdAt: 'unknown',
   }]);
 
   server.post('/v1/approval-requests', async (request) => {
