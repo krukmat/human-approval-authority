@@ -64,8 +64,8 @@ tasks:
   - {id: W8-T01, wave: W8, title: "Ceremony outcome ADR", depends_on: [W7-T01], status: DONE}
   - {id: W8-T02, wave: W8, title: "Negative-decision provenance and threat model", depends_on: [W8-T01, W7-T12], status: DONE}
   - {id: W8-T03, wave: W8, title: "Explicit REJECT service path", depends_on: [W8-T02, W7-T06, W7-T08], status: DONE}
-  - {id: W8-T04, wave: W8, title: "UNKNOWN indeterminate ceremony semantics", depends_on: [W8-T01], status: DONE}
-  - {id: W8-T05, wave: W8, title: "macOS approver APPROVE/REJECT/UNKNOWN UX", depends_on: [W8-T03, W8-T04, W3-T06], status: DONE}
+  - {id: W8-T04, wave: W8, title: "Fail-closed terminal rejection semantics", depends_on: [W8-T01], status: DONE}
+  - {id: W8-T05, wave: W8, title: "macOS approver APPROVE/REJECT UX", depends_on: [W8-T03, W8-T04, W3-T06], status: DONE}
   - {id: W8-T06, wave: W8, title: "SDK and CLI ceremony result contract", depends_on: [W8-T03, W8-T04, W7-T03], status: DONE}
   - {id: W8-T07, wave: W8, title: "Ceremony audit and observability semantics", depends_on: [W8-T03, W8-T04, W7-T11], status: DONE}
   - {id: W8-T08, wave: W8, title: "HAA-only automated ceremony end-to-end validation", depends_on: [W8-T05, W8-T06, W8-T07], status: DONE}
