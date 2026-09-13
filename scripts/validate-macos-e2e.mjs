@@ -4,13 +4,13 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildProvisionedMacApprover } from './lib/macos-approver.mjs';
 
 if (process.platform !== 'darwin') {
   throw new Error('W3-T06 requires a real macOS host with Touch ID / Secure Enclave');
 }
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-const macPackage = join(repoRoot, 'macos', 'haa-approver');
 const temp = await mkdtemp(join(tmpdir(), 'haa-macos-validation-'));
 const port = Number(process.env.HAA_VALIDATION_PORT ?? 8791);
 const baseUrl = `http://127.0.0.1:${port}`;
@@ -90,10 +90,8 @@ try {
   await waitForServer();
   console.log('✓ HAA server healthy');
 
-  execFileSync('swift', ['build', '-c', 'release'], { cwd: macPackage, stdio: 'inherit' });
-  const binPath = execFileSync('swift', ['build', '-c', 'release', '--show-bin-path'], { cwd: macPackage, encoding: 'utf8' }).trim();
-  approver = join(binPath, 'haa-approver');
-  console.log('✓ macOS approver built');
+  const builtApprover = buildProvisionedMacApprover({ repoRoot, buildRoot: temp });
+  approver = builtApprover.executablePath;
 
   const enrollment = JSON.parse(execFileSync(approver, ['--enroll', '--authenticator-id', authenticatorId], { encoding: 'utf8' }));
   await api('/v1/authenticators', {
