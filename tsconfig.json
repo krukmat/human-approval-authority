@@ -7,7 +7,9 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "skipLibCheck": true,
-    "outDir": "dist"
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
   },
   "include": ["packages/**/*.ts", "apps/**/*.ts", "tests/**/*.ts"]
 }
