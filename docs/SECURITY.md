@@ -18,12 +18,15 @@
 16. Receipt is not authority: receipt is audit evidence and cannot bypass server state.
 17. Device loss/revocation: revoke and re-enroll; do not recover private keys.
 18. Hardware firmware is TCB: secure element alone does not prove fingerprint use.
-19. Fail closed on unknown profile/version, invalid signature, expired challenge or ambiguous payload.
+19. Assurance terminology: `user-verified-device-bound` describes the supported authenticator path and enrolled device-bound key behavior; it is not a claim of remote platform/hardware attestation.
+20. Fail closed on unknown profile/version, invalid signature, expired challenge or ambiguous payload.
 
 ## Current trust assumptions
 
 - HAA client provisioning is an administrative boundary. Compromise of the operator that provisions a human principal can defeat identity separation by issuing additional credentials.
-- Authenticator assurance currently trusts the enrollment path and registered authenticator type; HAA v1 does not perform platform attestation of Apple Secure Enclave keys.
+- Authenticator assurance currently trusts the enrollment path and registered authenticator type. HAA v1 verifies evidence against the enrolled public key but does not independently attest Apple Secure Enclave provenance.
 - The append-only audit guarantee is enforced by the application/persistence API, not against a database administrator with direct SQLite write access.
 - TLS is expected to be provided by the deployment boundary (reverse proxy/service mesh) when HAA is accessed over a network.
 - SQLite is the current single-node persistence target; HA/multi-writer deployment is outside v0.x scope.
+
+See `docs/AUTHENTICATOR-ASSURANCE.md` for the assurance-level contract and the explicit non-attestation boundary.
