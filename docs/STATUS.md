@@ -23,16 +23,17 @@
 - **W7-T14 Backup/recovery contract:** DONE
 - **W7-T15 Software production-readiness gate:** DONE — accepted code SHA `7720ac04e5b35637dcc56952925af15386cdc226`
 - **W8-T01..T08 Universal ceremony outcomes:** DONE / HAA-ONLY
-- **W8-T09 Physical macOS ceremony compatibility gate:** READY
+- **W8-T09 Physical macOS ceremony compatibility gate:** DONE — validated SHA `1bec7bb76f0bb7119045bea6d59ed896364e2895`
+- **HAA-only software/ceremony phase:** CLOSED
 - **Product integrations:** PARKED
 
-The canonical task/dependency source is `tasks/manifest.yaml`. The active roadmap is `docs/HAA-ACTIVE-ROADMAP.md`.
+The canonical task/dependency source is `tasks/manifest.yaml`. The roadmap is `docs/HAA-ACTIVE-ROADMAP.md`.
 
-The independent W7-T05 review and rerun are recorded in `docs/W7-T05-REVIEW-2026-09-13.md`; W7-T15 closure evidence is in `docs/W7-PRODUCTION-READINESS.md`.
+The independent W7-T05 review and rerun are recorded in `docs/W7-T05-REVIEW-2026-09-13.md`; W7-T15 closure evidence is in `docs/W7-PRODUCTION-READINESS.md`; W8-T09 physical closure evidence and operator-confirmed final rerun are recorded in `docs/W8-PHYSICAL-CEREMONY-GATE.md`.
 
 ## Current quality gates
 
-The accepted W7 code baseline validates:
+The accepted HAA-only baseline validates:
 
 - committed npm lockfile v3;
 - `npm ci` in CI and `npm ci --omit=dev` in Docker;
@@ -41,9 +42,12 @@ The accepted W7 code baseline validates:
 - Docker build/start/health smoke;
 - Swift package tests and app-wrapper compilation on macOS CI;
 - CodeQL JavaScript/TypeScript analysis;
-- prior physical Secure Enclave / Touch ID / bounded-executor gate;
+- physical Secure Enclave / Touch ID approval path;
+- real MCP requester → human Touch ID → bounded executor path;
 - HAA-only automated APPROVE / REJECT terminal ceremony matrix;
-- request-TTL `EXPIRED` semantics remain distinct from challenge-level terminal rejection.
+- physical APPROVE / Esc / window-close / timeout / challenge-expiry ceremony validation;
+- request-TTL `EXPIRED` semantics remain distinct from challenge-level terminal rejection;
+- only positive verified approval can produce an `ExecutionGrant`.
 
 ## W7 engineering hardening delivered
 
@@ -111,7 +115,7 @@ The terminal ceremony contract is:
 ```text
 successful Touch ID   -> APPROVE
 Esc                    -> REJECT / USER_ESCAPE
-window close           -> REJECT / WINDOW_CLOSED
+window close / ⌘W     -> REJECT / WINDOW_CLOSED
 local timeout          -> REJECT / TIMEOUT
 challenge expiry       -> REJECT / CHALLENGE_EXPIRED
 interaction failure    -> REJECT / INTERACTION_ERROR
@@ -150,7 +154,7 @@ Challenge expiry can instead terminate a still-valid ceremony as `REJECTED / CHA
 
 ### macOS UX
 
-The trusted alert retains one positive button: `Approve with Touch ID`. A discreet `Esc: Reject` instruction provides explicit negative action. Closing the window, local timeout, challenge expiry or terminal interaction failure all emit challenge-bound REJECT results with typed reasons.
+The trusted alert retains one positive button: `Approve with Touch ID`. `Esc` provides explicit negative action and `⌘W` provides a deterministic window-close gesture even when `NSAlert` does not expose a reliable close control. Local timeout, challenge expiry or terminal interaction failure emit challenge-bound REJECT results with typed reasons.
 
 The existing positive stdout contract remains `haa.evidence.v1`. Terminal rejection output uses a distinct non-zero exit path and never emits positive evidence.
 
@@ -167,20 +171,25 @@ See:
 - `docs/W8-CEREMONY-OUTCOMES.md`
 - `docs/W8-NEGATIVE-DECISION-THREAT-MODEL.md`
 - `docs/W8-CEREMONY-AUDIT.md`
+- `docs/W8-PHYSICAL-CEREMONY-GATE.md`
 
-## Active W8 gate
+## W8 physical gate outcome
 
-`W8-T09` is now READY. It requires a real provisioned Apple Silicon ceremony validation of:
+`W8-T09` is DONE on validated SHA `1bec7bb76f0bb7119045bea6d59ed896364e2895`.
 
-1. Touch ID -> APPROVE;
-2. Esc -> REJECT / USER_ESCAPE;
-3. window close -> REJECT / WINDOW_CLOSED;
-4. timeout -> REJECT / TIMEOUT;
-5. terminal interaction failure -> REJECT / INTERACTION_ERROR (may remain automated/N/A if forcing it would require deliberately breaking the local trust environment);
-6. challenge expiry -> REJECT / CHALLENGE_EXPIRED;
-7. only APPROVE yields a usable `ExecutionGrant`;
-8. existing W3/W4 physical positive-path behavior remains regression-safe.
+Physical validation confirms:
+
+1. Touch ID -> APPROVE -> verified evidence / receipt / usable exact `ExecutionGrant`;
+2. Esc -> REJECT / USER_ESCAPE -> no grant;
+3. `⌘W` / window close -> REJECT / WINDOW_CLOSED -> no grant;
+4. timeout -> REJECT / TIMEOUT -> no grant;
+5. challenge expiry -> REJECT / CHALLENGE_EXPIRED -> no grant;
+6. interaction-error remains physical N/A where forcing it would weaken/disturb the local trust environment; automated coverage remains green;
+7. only APPROVE yields execution authority;
+8. W3/W4 physical positive-path behavior remains regression-safe.
+
+The first aggregate physical log had operator-input mismatches for Escape versus window-close and ended while waiting for challenge expiry. The affected rows were rerun after the macOS UX was made deterministic, and the operator confirmed the final rerun succeeded. The closure record explicitly relies on that operator-confirmed final rerun rather than treating the earlier incomplete aggregate log as final evidence.
 
 ## Scope boundaries
 
-Hardware remains deliberately deferred. No external product repository is part of the active HAA roadmap, and parked integration notes do not define HAA core dependencies.
+The HAA-only software/ceremony phase is closed. Hardware remains deliberately deferred. No external product repository is part of the completed HAA core baseline, and parked integration notes do not define HAA core dependencies. Any future DubBridge/product integration or hardware work requires deliberate reprioritization.
