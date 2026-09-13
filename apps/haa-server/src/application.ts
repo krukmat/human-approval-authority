@@ -151,25 +151,27 @@ export class HaaApplication {
     return request;
   }
 
-  getRequest(apiKey: string, requestId: string): ApprovalRequest {
+  getRequest(apiKey: string, requestId: string, now = new Date()): ApprovalRequest {
     const actor = this.authenticate(apiKey);
-    const request = this.mustRequest(requestId);
+    const request = this.refreshRequestExpiry(this.mustRequest(requestId), now);
     this.assertParticipant(actor, request);
     return request;
   }
 
   issueApprovalChallenge(args: { apiKey: string; requestId: string; authenticatorId: string; now?: Date }) {
     const actor = this.authenticateAs(args.apiKey, 'APPROVER');
-    const request = this.mustRequest(args.requestId);
+    const now = args.now ?? new Date();
+    const request = this.refreshRequestExpiry(this.mustRequest(args.requestId), now);
     if (actor !== request.intent.approverPrincipalId) throw new Error('FORBIDDEN');
+    if (request.state === 'EXPIRED') throw new Error('REQUEST_EXPIRED');
     const auth = this.store.getAuthenticator(args.authenticatorId);
     if (!auth || auth.status !== 'ACTIVE') throw new Error('AUTHENTICATOR_NOT_ACTIVE');
     if (auth.principalId !== request.intent.approverPrincipalId) throw new Error('AUTHENTICATOR_PRINCIPAL_MISMATCH');
-    const challenge = issueChallenge(request, auth.id, this.profiles, this.signer, args.now);
+    const challenge = issueChallenge(request, auth.id, this.profiles, this.signer, now);
     const digest = challengeDigest(challenge);
     const payload = decodeChallengePayload(challenge);
     this.store.saveChallenge(digest, challenge, payload.requestId, payload.authenticatorId, payload.issuedAt);
-    this.store.appendAudit(this.audit({ requestId: request.id, eventType: 'CHALLENGE_ISSUED', actorId: actor, actionDigest: request.actionDigest, at: args.now ?? new Date(), details: { challengeDigest: digest } }));
+    this.store.appendAudit(this.audit({ requestId: request.id, eventType: 'CHALLENGE_ISSUED', actorId: actor, actionDigest: request.actionDigest, at: now, details: { challengeDigest: digest } }));
     return challenge;
   }
 
@@ -181,8 +183,10 @@ export class HaaApplication {
     now?: Date;
   }): RejectionResult {
     const actor = this.authenticateAs(args.apiKey, 'APPROVER');
-    const request = this.mustRequest(args.requestId);
+    const now = args.now ?? new Date();
+    const request = this.refreshRequestExpiry(this.mustRequest(args.requestId), now);
     if (actor !== request.intent.approverPrincipalId) throw new Error('FORBIDDEN');
+    if (request.state === 'EXPIRED') throw new Error('REQUEST_EXPIRED');
     if (request.state !== 'PENDING') throw new Error(`REQUEST_NOT_PENDING:${request.state}`);
     if (args.reason !== 'USER_ESCAPE') throw new Error('UNSUPPORTED_REJECTION_REASON');
 
@@ -197,7 +201,6 @@ export class HaaApplication {
     }
 
     const payload = decodeChallengePayload(challenge);
-    const now = args.now ?? new Date();
     if (payload.requestId !== request.id || payload.intentDigest !== request.intentDigest || payload.actionDigest !== request.actionDigest) {
       throw new Error('CHALLENGE_BINDING_MISMATCH');
     }
@@ -228,8 +231,10 @@ export class HaaApplication {
 
   submitEvidence(args: { apiKey: string; evidence: ApprovalEvidence; now?: Date }) {
     const actor = this.authenticateAs(args.apiKey, 'APPROVER');
-    const request = this.mustRequest(args.evidence.requestId);
+    const now = args.now ?? new Date();
+    const request = this.refreshRequestExpiry(this.mustRequest(args.evidence.requestId), now);
     if (actor !== request.intent.approverPrincipalId) throw new Error('FORBIDDEN');
+    if (request.state === 'EXPIRED') throw new Error('REQUEST_EXPIRED');
     if (request.state !== 'PENDING') throw new Error(`REQUEST_NOT_PENDING:${request.state}`);
     const storedChallenge = this.store.getChallenge(args.evidence.challengeDigest);
     if (!storedChallenge || storedChallenge.consumed) throw new Error('CHALLENGE_NOT_ACTIVE');
@@ -257,7 +262,7 @@ export class HaaApplication {
     });
     if (!this.store.consumeChallenge(args.evidence.challengeDigest)) throw new Error('CHALLENGE_REPLAY');
     assertTransition('PENDING', 'APPROVED');
-    if (!this.store.transitionRequest(request.id, 'PENDING', 'APPROVED', (args.now ?? new Date()).toISOString())) throw new Error('CONCURRENT_APPROVAL');
+    if (!this.store.transitionRequest(request.id, 'PENDING', 'APPROVED', now.toISOString())) throw new Error('CONCURRENT_APPROVAL');
     const receipt = createReceipt({
       requestId: request.id,
       actionDigest: request.actionDigest,
@@ -265,10 +270,10 @@ export class HaaApplication {
       evidence: verified,
       expiresAt: request.intent.expiresAt,
       signer: this.signer,
-      ...(args.now ? { now: args.now } : {}),
+      now,
     });
     this.store.saveReceipt(receipt);
-    this.store.appendAudit(this.audit({ requestId: request.id, eventType: 'APPROVED', actorId: verified.principalId, actionDigest: request.actionDigest, at: args.now ?? new Date(), details: { authenticatorId: verified.authenticatorId } }));
+    this.store.appendAudit(this.audit({ requestId: request.id, eventType: 'APPROVED', actorId: verified.principalId, actionDigest: request.actionDigest, at: now, details: { authenticatorId: verified.authenticatorId } }));
     return receipt;
   }
 
@@ -281,23 +286,25 @@ export class HaaApplication {
     now?: Date;
   }) {
     const executorId = this.authenticateAs(args.apiKey, 'EXECUTOR');
-    const request = this.mustRequest(args.requestId);
+    let request = this.mustRequest(args.requestId);
     if (request.intent.executorAudience !== executorId) throw new Error('WRONG_EXECUTOR_AUDIENCE');
 
     this.profiles.validate(args.actualAction);
     const actualDigest = this.profiles.actionDigest(args.actualAction);
     if (actualDigest !== request.actionDigest) throw new Error('ACTION_DIGEST_MISMATCH');
 
+    const now = args.now ?? new Date();
     const priorGrant = this.store.getExecutionGrant(args.executionId);
     if (priorGrant) {
       if (priorGrant.requestId !== request.id) throw new Error('EXECUTION_ID_CONFLICT');
       if (priorGrant.actionDigest !== request.actionDigest || priorGrant.executorAudience !== executorId) throw new Error('EXECUTION_GRANT_BINDING_MISMATCH');
-      if (new Date(priorGrant.expiresAt).getTime() <= (args.now ?? new Date()).getTime()) throw new Error('EXECUTION_GRANT_EXPIRED');
+      if (new Date(priorGrant.expiresAt).getTime() <= now.getTime()) throw new Error('EXECUTION_GRANT_EXPIRED');
       return priorGrant;
     }
 
+    request = this.refreshRequestExpiry(request, now);
+    if (request.state === 'EXPIRED') throw new Error('APPROVAL_EXPIRED');
     if (request.state !== 'APPROVED') throw new Error(`REQUEST_NOT_APPROVED:${request.state}`);
-    if (new Date(request.intent.expiresAt).getTime() <= (args.now ?? new Date()).getTime()) throw new Error('APPROVAL_EXPIRED');
     this.profiles.validatePreconditions(args.actualAction, args.actualState);
 
     const grant = createExecutionGrant({
@@ -306,15 +313,14 @@ export class HaaApplication {
       actionDigest: request.actionDigest,
       executorAudience: executorId,
       signer: this.signer,
-      ...(args.now ? { now: args.now } : {}),
+      now,
     });
-    const at = args.now ?? new Date();
     const result = this.store.consumeApproved({
       requestId: request.id,
       executionId: args.executionId,
       grant,
-      consumedAt: at.toISOString(),
-      auditEvent: this.audit({ requestId: request.id, eventType: 'CONSUMED', actorId: executorId, actionDigest: request.actionDigest, executionId: args.executionId, at }),
+      consumedAt: now.toISOString(),
+      auditEvent: this.audit({ requestId: request.id, eventType: 'CONSUMED', actorId: executorId, actionDigest: request.actionDigest, executionId: args.executionId, at: now }),
     });
     return result.grant;
   }
@@ -337,6 +343,28 @@ export class HaaApplication {
     const request = this.store.getRequest(id);
     if (!request) throw new Error('REQUEST_NOT_FOUND');
     return request;
+  }
+
+  private refreshRequestExpiry(request: ApprovalRequest, now: Date): ApprovalRequest {
+    if (request.state !== 'PENDING' && request.state !== 'APPROVED') return request;
+    const expiresAt = Date.parse(request.intent.expiresAt);
+    if (!Number.isFinite(expiresAt) || expiresAt > now.getTime()) return request;
+
+    assertTransition(request.state, 'EXPIRED');
+    const updatedAt = now.toISOString();
+    const changed = this.store.transitionRequest(request.id, request.state, 'EXPIRED', updatedAt);
+    if (changed) {
+      this.store.appendAudit(this.audit({
+        requestId: request.id,
+        eventType: 'EXPIRED',
+        actorId: 'haa-authority',
+        actionDigest: request.actionDigest,
+        at: now,
+        details: { reason: 'REQUEST_TTL' },
+      }));
+      return { ...request, state: 'EXPIRED', updatedAt };
+    }
+    return this.mustRequest(request.id);
   }
 
   private assertParticipant(actorId: string, request: ApprovalRequest): void {
