@@ -41,17 +41,17 @@ struct ApprovalEvidence: Encodable {
     let signature: String
 }
 
-enum UnknownCeremonyReason: String, Encodable {
+enum RejectionReason: String, Encodable, Equatable {
+    case userEscape = "USER_ESCAPE"
     case windowClosed = "WINDOW_CLOSED"
-    case localTimeout = "LOCAL_TIMEOUT"
+    case timeout = "TIMEOUT"
+    case challengeExpired = "CHALLENGE_EXPIRED"
     case interactionError = "INTERACTION_ERROR"
-    case authenticatorUnavailable = "AUTHENTICATOR_UNAVAILABLE"
 }
 
 enum CeremonyDecision: Equatable {
     case approve
-    case reject
-    case unknown(UnknownCeremonyReason)
+    case reject(RejectionReason)
 }
 
 struct CeremonyResultOutput: Encodable {
@@ -60,12 +60,8 @@ struct CeremonyResultOutput: Encodable {
     let challengeDigest: String
     let reason: String
 
-    static func reject(requestId: String, challengeDigest: String) -> CeremonyResultOutput {
-        CeremonyResultOutput(outcome: "REJECT", requestId: requestId, challengeDigest: challengeDigest, reason: "USER_ESCAPE")
-    }
-
-    static func unknown(requestId: String, challengeDigest: String, reason: UnknownCeremonyReason) -> CeremonyResultOutput {
-        CeremonyResultOutput(outcome: "UNKNOWN", requestId: requestId, challengeDigest: challengeDigest, reason: reason.rawValue)
+    static func reject(requestId: String, challengeDigest: String, reason: RejectionReason) -> CeremonyResultOutput {
+        CeremonyResultOutput(outcome: "REJECT", requestId: requestId, challengeDigest: challengeDigest, reason: reason.rawValue)
     }
 }
 
