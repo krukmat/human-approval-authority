@@ -18,6 +18,7 @@
     "check": "npm run test && npx tsc --noEmit",
     "validate:macos": "node scripts/validate-macos-e2e.mjs",
     "validate:agent-macos": "node scripts/validate-agent-macos-e2e.mjs",
+    "provision:client": "node --experimental-strip-types scripts/provision-client.mjs",
     "start": "node --experimental-strip-types apps/haa-server/src/server.ts"
   },
   "dependencies": {
