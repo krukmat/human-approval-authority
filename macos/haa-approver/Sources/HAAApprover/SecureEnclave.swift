@@ -38,6 +38,18 @@ final class SecureEnclaveAuthenticator {
         return pem(spki: p256SPKIPrefix + raw)
     }
 
+    func delete() throws {
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassKey,
+            kSecAttrApplicationTag: tag,
+            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
+        }
+    }
+
     func publicKeyPEM() throws -> String {
         let key = try loadPrivateKey(prompt: nil)
         var error: Unmanaged<CFError>?
@@ -81,6 +93,7 @@ final class SecureEnclaveAuthenticator {
 final class SecureEnclaveAuthenticator {
     init(authenticatorId: String) {}
     func enroll() throws -> String { throw NSError(domain: "HAA", code: 100) }
+    func delete() throws {}
     func publicKeyPEM() throws -> String { throw NSError(domain: "HAA", code: 100) }
     func signApprovalDigest(_ digest: String, prompt: String) throws -> String { throw NSError(domain: "HAA", code: 100) }
 }
