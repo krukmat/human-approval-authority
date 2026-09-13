@@ -43,7 +43,6 @@ export class HaaApplication {
     this.signer = options.authoritySigner;
     this.profiles = options.profiles ?? new ActionProfileRegistry();
     const defaults: EvidenceVerifier[] = [
-      new GenericSignedEvidenceVerifier('test-key', 'presence'),
       new GenericSignedEvidenceVerifier('apple-secure-enclave', 'user-verified-device-bound'),
       new GenericSignedEvidenceVerifier('haa-hardware-v1', 'user-verified-device-bound'),
     ];
@@ -92,6 +91,7 @@ export class HaaApplication {
     now?: Date;
   }): ApprovalRequest {
     const requesterId = this.authenticate(args.apiKey);
+    if (requesterId === args.approverPrincipalId) throw new Error('SELF_APPROVAL_FORBIDDEN');
     const now = args.now ?? new Date();
     this.profiles.validate(args.action);
     const requestId = args.requestId ?? randomUUID();
@@ -123,9 +123,9 @@ export class HaaApplication {
   }
 
   getRequest(apiKey: string, requestId: string): ApprovalRequest {
-    this.authenticate(apiKey);
-    const request = this.store.getRequest(requestId);
-    if (!request) throw new Error('REQUEST_NOT_FOUND');
+    const actor = this.authenticate(apiKey);
+    const request = this.mustRequest(requestId);
+    this.assertParticipant(actor, request);
     return request;
   }
 
@@ -233,7 +233,9 @@ export class HaaApplication {
   }
 
   listAudit(apiKey: string, requestId: string): AuditEvent[] {
-    this.authenticate(apiKey);
+    const actor = this.authenticate(apiKey);
+    const request = this.mustRequest(requestId);
+    this.assertParticipant(actor, request);
     return this.store.listAudit(requestId);
   }
 
@@ -241,6 +243,11 @@ export class HaaApplication {
     const request = this.store.getRequest(id);
     if (!request) throw new Error('REQUEST_NOT_FOUND');
     return request;
+  }
+
+  private assertParticipant(actorId: string, request: ApprovalRequest): void {
+    const participants = [request.intent.requesterId, request.intent.approverPrincipalId, request.intent.executorAudience];
+    if (!participants.includes(actorId)) throw new Error('FORBIDDEN');
   }
 
   private audit(args: {
