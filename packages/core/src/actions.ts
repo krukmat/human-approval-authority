@@ -14,17 +14,37 @@ function requireString(payload: Record<string, JsonValue>, key: string): string 
   return value;
 }
 
+function assertExactKeys(value: Record<string, unknown>, allowed: readonly string[], label: string): void {
+  const allowedSet = new Set(allowed);
+  const unexpected = Object.keys(value).filter((key) => !allowedSet.has(key));
+  if (unexpected.length > 0) throw new Error(`UNEXPECTED_${label}_FIELD:${unexpected.sort().join(',')}`);
+}
+
+function assertActionEnvelope(action: ActionSpec): void {
+  assertExactKeys(action as unknown as Record<string, unknown>, ['schema', 'type', 'payload', 'preconditions'], 'ACTION');
+  if (action.schema !== 'haa.action.v1') throw new Error(`UNSUPPORTED_ACTION_SCHEMA:${String(action.schema)}`);
+}
+
 export const demoActionProfile: ActionProfile = {
   type: 'demo.action.v1',
   validate(action) {
+    assertExactKeys(action.payload, ['resource', 'operation'], 'PAYLOAD');
     requireString(action.payload, 'resource');
     requireString(action.payload, 'operation');
+    if (action.preconditions !== undefined) {
+      assertExactKeys(action.preconditions, ['version'], 'PRECONDITION');
+      if (action.preconditions.version !== undefined) requireString(action.preconditions, 'version');
+    }
   },
   displayClaims(action) {
-    return [
+    const claims: DisplayClaim[] = [
       { label: 'ACTION', value: requireString(action.payload, 'operation') },
       { label: 'RESOURCE', value: requireString(action.payload, 'resource') },
     ];
+    if (action.preconditions?.version !== undefined) {
+      claims.push({ label: 'EXPECTED VERSION', value: requireString(action.preconditions, 'version') });
+    }
+    return claims;
   },
   validatePreconditions(action, actualState) {
     const expected = action.preconditions?.version;
@@ -36,6 +56,8 @@ export const demoActionProfile: ActionProfile = {
 export const gitMergeProfile: ActionProfile = {
   type: 'git.merge.v1',
   validate(action) {
+    assertExactKeys(action.payload, ['repository', 'sourceCommitSha', 'targetBranch', 'targetCommitBefore'], 'PAYLOAD');
+    if (action.preconditions !== undefined) assertExactKeys(action.preconditions, [], 'PRECONDITION');
     requireString(action.payload, 'repository');
     requireString(action.payload, 'sourceCommitSha');
     requireString(action.payload, 'targetBranch');
@@ -69,9 +91,18 @@ export class ActionProfileRegistry {
     return profile;
   }
 
-  validate(action: ActionSpec): void { this.get(action.type).validate(action); }
-  displayClaims(action: ActionSpec): DisplayClaim[] { return this.get(action.type).displayClaims(action); }
+  validate(action: ActionSpec): void {
+    assertActionEnvelope(action);
+    this.get(action.type).validate(action);
+  }
+
+  displayClaims(action: ActionSpec): DisplayClaim[] {
+    this.validate(action);
+    return this.get(action.type).displayClaims(action);
+  }
+
   validatePreconditions(action: ActionSpec, actual?: Record<string, JsonValue>): void {
+    this.validate(action);
     this.get(action.type).validatePreconditions(action, actual);
   }
 
