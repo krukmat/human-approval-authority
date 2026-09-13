@@ -1,7 +1,7 @@
 import Foundation
 #if os(macOS)
-import LocalAuthentication
 import Security
+import LocalAuthentication
 #endif
 
 #if os(macOS)
@@ -23,6 +23,7 @@ final class SecureEnclaveAuthenticator {
             kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
             kSecAttrKeySizeInBits: 256,
             kSecAttrTokenID: kSecAttrTokenIDSecureEnclave,
+            kSecUseDataProtectionKeychain: true,
             kSecPrivateKeyAttrs: [
                 kSecAttrIsPermanent: true,
                 kSecAttrApplicationTag: tag,
@@ -93,7 +94,8 @@ final class SecureEnclaveAuthenticator {
 
     private func pem(spki: Data) -> String {
         let b64 = spki.base64EncodedString(options: [.lineLength64Characters, .endLineWithLineFeed])
-        return "-----BEGIN PUBLIC KEY-----\n\(b64)-----END PUBLIC KEY-----\n"
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return "-----BEGIN PUBLIC KEY-----\n\(b64)\n-----END PUBLIC KEY-----\n"
     }
 }
 #else
