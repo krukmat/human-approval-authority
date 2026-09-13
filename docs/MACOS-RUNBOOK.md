@@ -2,6 +2,12 @@
 
 W3 cannot pass without a real Mac with Touch ID / Secure Enclave.
 
+## Why the approver is wrapped as an app
+
+The Touch ID-protected Secure Enclave key lives in the macOS Data Protection Keychain. Apple derives access to that keychain from code-signing entitlements that must be authorized by a provisioning profile. A standalone Swift command-line executable has nowhere to embed that profile, so the validation path compiles the same HAA approver sources into a minimal app-like bundle and executes its binary from `HAAApprover.app/Contents/MacOS/HAAApprover`.
+
+The wrapper does not change the HAA protocol or turn the approver into a general desktop application. It exists only to establish a valid macOS application identity for the Secure Enclave/keychain boundary.
+
 ## Preferred validation
 
 From the repository root on the target Mac:
@@ -9,12 +15,31 @@ From the repository root on the target Mac:
 ```bash
 npm install
 npm run validate:macos
+npm run validate:agent-macos
 ```
 
-The validation script performs the full W3-T06 gate:
+The validation helper automatically:
+
+- uses `HAA_APPLE_TEAM_ID` when provided;
+- otherwise detects a single `Apple Development` signing identity in the login keychain;
+- uses the active full Xcode installation, or `/Applications/Xcode.app` when `xcode-select` points only to Command Line Tools;
+- invokes Xcode automatic signing/provisioning for the minimal approver app;
+- verifies the resulting code signature, provisioning profile and application/keychain entitlements before creating the Secure Enclave key.
+
+If multiple development teams exist, set:
+
+```bash
+export HAA_APPLE_TEAM_ID=XXXXXXXXXX
+```
+
+An alternate bundle identifier can be supplied with `HAA_APPLE_BUNDLE_ID` if required.
+
+## W3-T06 gate
+
+`npm run validate:macos` performs the full Apple authenticator gate:
 
 1. Starts an isolated HAA server with temporary SQLite storage and authority key.
-2. Builds the Swift approver in release mode.
+2. Builds and provisions the app-like macOS approver wrapper.
 3. Creates a new device-bound Secure Enclave P-256 key protected by the current biometric set.
 4. Registers the authenticator with HAA.
 5. Creates an exact `demo.action.v1` approval request and signed challenge.
@@ -30,25 +55,29 @@ Success ends with:
 PASS W3-T06: Apple Secure Enclave / Touch ID end-to-end gate
 ```
 
-The script uses a unique authenticator ID each run. Keys are device-bound and are not exported; validation server files are temporary and removed when the run ends.
+`npm run validate:agent-macos` then runs the stronger W4-T05 scenario: MCP requester → human Touch ID → external bounded executor.
+
+The scripts use a unique authenticator ID each run. Keys are device-bound and are not exported; the validation key and temporary server state are removed at the end.
 
 ## Requirements
 
 - macOS host with Secure Enclave and Touch ID configured.
-- Swift toolchain available (`swift --version`).
-- Node.js 24+.
-- Port `8791` free, or set `HAA_VALIDATION_PORT` to another local port.
+- Full Xcode installed, not only Command Line Tools.
+- Apple ID signed into Xcode with an Apple Development certificate available for the selected team.
+- Node.js 24+ recommended and required by the project engine contract.
+- Port `8791`/`8792` free, or set `HAA_VALIDATION_PORT` to another local port.
 
-## Manual fallback
+If Xcode signing has never been configured on the machine, open **Xcode → Settings → Accounts**, add the Apple ID/team and create an Apple Development certificate before rerunning the gate.
 
-If the automated gate fails before the biometric ceremony, reproduce the individual steps manually:
+## Failure diagnostics
 
-1. Start HAA with persistent authority key and dev clients.
-2. Fetch `GET /v1/authority-key` and save `publicKeyPem`.
-3. Build `macos/haa-approver` on macOS.
-4. Run `haa-approver --enroll --authenticator-id <id>` and register the returned P-256 public key through `POST /v1/authenticators` using the human principal API key.
-5. Create an approval request with the agent API key.
-6. Issue the challenge with the human API key and save the JSON.
-7. Run `haa-approver --challenge challenge.json --authority-public-key authority.pem --authenticator-id <id>`.
-8. Confirm the native display fields, approve with Touch ID, then submit returned `ApprovalEvidence` to `POST /v1/approval-evidence`.
-9. Execute through the authorize endpoint and verify mutation, stale-precondition and single-use protections.
+`OSStatus -34018` means `errSecMissingEntitlement`. For this project it indicates that the approver was executed without a provisioned application identity suitable for the Data Protection Keychain. Do not work around it by weakening the key access-control flags or by moving the signing key out of Secure Enclave; fix the signing/provisioning context instead.
+
+Useful checks on the built wrapper:
+
+```bash
+codesign -d --entitlements :- /path/to/HAAApprover.app
+security cms -D -i /path/to/HAAApprover.app/Contents/embedded.provisionprofile
+```
+
+The signed app must expose an application identifier and keychain access group authorized by the embedded profile.
