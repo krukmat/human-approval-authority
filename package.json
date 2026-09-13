@@ -25,6 +25,7 @@
     "provision:client": "node --experimental-strip-types scripts/provision-client.mjs",
     "rotate:client": "node --experimental-strip-types scripts/rotate-client.mjs",
     "disable:client": "node --experimental-strip-types scripts/disable-client.mjs",
+    "rotate:authority-key": "node --experimental-strip-types scripts/rotate-authority-key.mjs",
     "start": "node --experimental-strip-types apps/haa-server/src/server.ts"
   },
   "dependencies": {
