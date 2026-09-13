@@ -196,11 +196,22 @@ export class HaaApplication {
     const executorId = this.authenticate(args.apiKey);
     const request = this.mustRequest(args.requestId);
     if (request.intent.executorAudience !== executorId) throw new Error('WRONG_EXECUTOR_AUDIENCE');
-    if (new Date(request.intent.expiresAt).getTime() <= (args.now ?? new Date()).getTime()) throw new Error('APPROVAL_EXPIRED');
+
     this.profiles.validate(args.actualAction);
     const actualDigest = this.profiles.actionDigest(args.actualAction);
     if (actualDigest !== request.actionDigest) throw new Error('ACTION_DIGEST_MISMATCH');
+
+    const priorGrant = this.store.getExecutionGrant(args.executionId);
+    if (priorGrant) {
+      if (priorGrant.requestId !== request.id) throw new Error('EXECUTION_ID_CONFLICT');
+      if (priorGrant.actionDigest !== request.actionDigest || priorGrant.executorAudience !== executorId) throw new Error('EXECUTION_GRANT_BINDING_MISMATCH');
+      if (new Date(priorGrant.expiresAt).getTime() <= (args.now ?? new Date()).getTime()) throw new Error('EXECUTION_GRANT_EXPIRED');
+      return priorGrant;
+    }
+
+    if (new Date(request.intent.expiresAt).getTime() <= (args.now ?? new Date()).getTime()) throw new Error('APPROVAL_EXPIRED');
     this.profiles.validatePreconditions(args.actualAction, args.actualState);
+
     const grant = createExecutionGrant({
       requestId: request.id,
       executionId: args.executionId,
