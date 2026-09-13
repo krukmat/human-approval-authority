@@ -22,32 +22,36 @@ tasks:
   - {id: W2-T08, wave: W2, title: "Append-only audit events", depends_on: [W2-T01, W2-T03, W2-T06, W2-T07], status: DONE}
   - {id: W2-T09, wave: W2, title: "Service end-to-end security gate", depends_on: [W2-T03, W2-T04, W2-T05, W2-T06, W2-T07, W2-T08], status: DONE}
   - {id: W3-T01, wave: W3, title: "macOS approver app scaffold", depends_on: [W2-T05], status: DONE}
-  - {id: W3-T02, wave: W3, title: "Secure Enclave authenticator enrollment", depends_on: [W3-T01, W2-T04], status: DONE_UNVALIDATED}
-  - {id: W3-T03, wave: W3, title: "Signed package verification + trusted renderer", depends_on: [W3-T01, W1-T02, W1-T04], status: DONE_UNVALIDATED}
-  - {id: W3-T04, wave: W3, title: "Touch ID-gated approval signature", depends_on: [W3-T02, W3-T03], status: DONE_UNVALIDATED}
+  - {id: W3-T02, wave: W3, title: "Secure Enclave authenticator enrollment", depends_on: [W3-T01, W2-T04], status: DONE}
+  - {id: W3-T03, wave: W3, title: "Signed package verification + trusted renderer", depends_on: [W3-T01, W1-T02, W1-T04], status: DONE}
+  - {id: W3-T04, wave: W3, title: "Touch ID-gated approval signature", depends_on: [W3-T02, W3-T03], status: DONE}
   - {id: W3-T05, wave: W3, title: "Apple evidence verifier adapter", depends_on: [W2-T06, W3-T04], status: DONE}
-  - {id: W3-T06, wave: W3, title: "Apple end-to-end gate", depends_on: [W3-T05, W2-T09], status: READY_FOR_LOCAL_VALIDATION}
+  - {id: W3-T06, wave: W3, title: "Apple end-to-end gate", depends_on: [W3-T05, W2-T09], status: DONE}
   - {id: W4-T01, wave: W4, title: "TypeScript requester SDK", depends_on: [W2-T09], status: DONE}
   - {id: W4-T02, wave: W4, title: "CLI approval requester", depends_on: [W4-T01], status: DONE}
   - {id: W4-T03, wave: W4, title: "MCP adapter", depends_on: [W4-T01], status: DONE}
   - {id: W4-T04, wave: W4, title: "Reference executor + precondition enforcement", depends_on: [W2-T07, W4-T01], status: DONE}
-  - {id: W4-T05, wave: W4, title: "Real agent approval scenario", depends_on: [W3-T06, W4-T02, W4-T03, W4-T04], status: READY_FOR_LOCAL_VALIDATION}
-  - {id: W4-T06, wave: W4, title: "Value-gate decision record", depends_on: [W4-T05], status: BLOCKED}
-  - {id: W5-T01, wave: W5, title: "Hardware BOM + firmware scaffold", depends_on: [W4-T06], status: BLOCKED}
-  - {id: W5-T02, wave: W5, title: "Terminal package verification over USB", depends_on: [W5-T01, W1-T04], status: BLOCKED}
-  - {id: W5-T03, wave: W5, title: "Trusted OLED renderer + reject control", depends_on: [W5-T02, W1-T02], status: BLOCKED}
-  - {id: W5-T04, wave: W5, title: "FPC2534 local enrollment and match", depends_on: [W5-T01], status: BLOCKED}
-  - {id: W5-T05, wave: W5, title: "Device identity + signed hardware evidence", depends_on: [W5-T02, W5-T03, W5-T04], status: BLOCKED}
-  - {id: W5-T06, wave: W5, title: "Hardware evidence verifier adapter", depends_on: [W2-T06, W5-T05], status: BLOCKED}
-  - {id: W5-T07, wave: W5, title: "Hardware end-to-end POC gate", depends_on: [W5-T06, W4-T05], status: BLOCKED}
+  - {id: W4-T05, wave: W4, title: "Real agent approval scenario", depends_on: [W3-T06, W4-T02, W4-T03, W4-T04], status: DONE}
+  - {id: W4-T06, wave: W4, title: "Value-gate decision record", depends_on: [W4-T05], status: DONE}
+  - {id: W5-T01, wave: W5, title: "Hardware BOM + firmware scaffold", depends_on: [W4-T06], status: DEFERRED}
+  - {id: W5-T02, wave: W5, title: "Terminal package verification over USB", depends_on: [W5-T01, W1-T04], status: DEFERRED}
+  - {id: W5-T03, wave: W5, title: "Trusted OLED renderer + reject control", depends_on: [W5-T02, W1-T02], status: DEFERRED}
+  - {id: W5-T04, wave: W5, title: "FPC2534 local enrollment and match", depends_on: [W5-T01], status: DEFERRED}
+  - {id: W5-T05, wave: W5, title: "Device identity + signed hardware evidence", depends_on: [W5-T02, W5-T03, W5-T04], status: DEFERRED}
+  - {id: W5-T06, wave: W5, title: "Hardware evidence verifier adapter", depends_on: [W2-T06, W5-T05], status: DEFERRED}
+  - {id: W5-T07, wave: W5, title: "Hardware end-to-end POC gate", depends_on: [W5-T06, W4-T05], status: DEFERRED}
   - {id: W6-T01, wave: W6, title: "Hardware TCB threat review", depends_on: [W5-T07], status: BLOCKED}
   - {id: W6-T02, wave: W6, title: "Secure boot / firmware signing / debug policy", depends_on: [W6-T01], status: BLOCKED}
   - {id: W6-T03, wave: W6, title: "ATECC608C signing-key integration", depends_on: [W6-T01, W5-T05], status: BLOCKED}
   - {id: W6-T04, wave: W6, title: "Device counter, revoke and recovery", depends_on: [W6-T02, W6-T03], status: BLOCKED}
   - {id: W6-T05, wave: W6, title: "Signed firmware update path", depends_on: [W6-T02], status: BLOCKED}
   - {id: W6-T06, wave: W6, title: "Hardware security acceptance gate", depends_on: [W6-T04, W6-T05], status: BLOCKED}
-  - {id: W7-T01, wave: W7, title: "Protocol/version compatibility freeze", depends_on: [W4-T05], status: BLOCKED}
-  - {id: W7-T02, wave: W7, title: "Docker/self-host package", depends_on: [W2-T09, W7-T01], status: BLOCKED}
-  - {id: W7-T03, wave: W7, title: "Publishable TypeScript SDK package", depends_on: [W4-T01, W7-T01], status: BLOCKED}
-  - {id: W7-T04, wave: W7, title: "Optional WebAuthn adapter spike", depends_on: [W7-T01], status: BLOCKED}
-  - {id: W7-T05, wave: W7, title: "Final cross-model security/architecture review", depends_on: [W7-T01, W7-T02, W7-T03], status: BLOCKED}
+  - {id: W7-T01, wave: W7, title: "Protocol/version compatibility freeze", depends_on: [W4-T05], status: DONE}
+  - {id: W7-T02, wave: W7, title: "Docker/self-host package", depends_on: [W2-T09, W7-T01], status: DONE}
+  - {id: W7-T03, wave: W7, title: "Publishable TypeScript SDK package", depends_on: [W4-T01, W7-T01], status: DONE}
+  - {id: W7-T04, wave: W7, title: "Optional WebAuthn adapter spike", depends_on: [W7-T01], status: DEFERRED_OPTIONAL}
+  - {id: W7-T05, wave: W7, title: "Final cross-model security/architecture review", depends_on: [W7-T01, W7-T02, W7-T03], status: READY_FOR_EXTERNAL_REVIEW}
+  - {id: W8-T01, wave: W8, title: "DubBridge ActionProfile specification", depends_on: [W7-T01, W7-T03, W7-T05], status: FUTURE}
+  - {id: W8-T02, wave: W8, title: "DubBridge requester/executor adapter", depends_on: [W8-T01, W7-T02], status: FUTURE}
+  - {id: W8-T03, wave: W8, title: "DubBridge real end-to-end approval gate", depends_on: [W8-T02], status: FUTURE}
+  - {id: W8-T04, wave: W8, title: "DubBridge cross-system audit/failure/retry hardening", depends_on: [W8-T03], status: FUTURE}
