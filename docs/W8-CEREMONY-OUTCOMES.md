@@ -6,12 +6,11 @@ This document defines product-independent human ceremony outcomes for HAA. It do
 
 ## Outcome model
 
-A human-facing HAA ceremony has exactly three caller-visible outcomes:
+A terminal HAA ceremony has exactly two operational outcomes:
 
 ```text
 APPROVE
 REJECT
-UNKNOWN
 ```
 
 They do not have equal authority.
@@ -34,49 +33,40 @@ ApprovalEvidence
 
 ### REJECT
 
-`REJECT` means the active approver explicitly refused the currently displayed challenge.
+`REJECT` means the requested transition did not complete through a successful positive ceremony. It never grants authority.
 
-Initial macOS UX mapping:
-
-```text
-Esc -> REJECT
-```
-
-REJECT is deliberately lower-assurance than APPROVE. It is not represented as biometric/Secure Enclave approval evidence and must never be described as such.
-
-Server-side acceptance of REJECT requires all of the following:
-
-- an authenticated client with the `APPROVER` role;
-- the client identity equals the request `approverPrincipalId`;
-- the request is still `PENDING`;
-- the supplied challenge digest resolves to an active, unconsumed challenge;
-- the challenge is bound to the same request and approver authenticator;
-- the challenge payload still binds the request action/intent digests;
-- the rejection reason is an allowed typed value.
-
-A valid explicit reject consumes that challenge, transitions `PENDING -> REJECTED`, and records a `REJECTED` audit event.
-
-REJECT never creates `ApprovalReceipt` or `ExecutionGrant`.
-
-### UNKNOWN
-
-`UNKNOWN` means HAA cannot truthfully attribute a positive or negative decision to the human.
-
-Initial causes include:
+Supported terminal reasons:
 
 ```text
+USER_ESCAPE
 WINDOW_CLOSED
-LOCAL_TIMEOUT
-APP_TERMINATED
+TIMEOUT
+CHALLENGE_EXPIRED
 INTERACTION_ERROR
-AUTHENTICATOR_UNAVAILABLE
 ```
 
-UNKNOWN is a ceremony/caller outcome only. It is **not** added to frozen `ApprovalState` and it is not persisted as a human decision.
+The assurance claim depends on the reason:
 
-If the underlying request remains valid, an UNKNOWN ceremony leaves the request `PENDING` and another challenge/ceremony may be attempted.
+```text
+USER_ESCAPE       -> explicit-human-negative-action
+all other reasons -> fail-closed-terminal
+```
 
-A real request/challenge expiry remains expiry semantics; it must not be rewritten as human rejection.
+Only `USER_ESCAPE` claims that the human explicitly performed the negative UI action. `WINDOW_CLOSED`, `TIMEOUT`, `CHALLENGE_EXPIRED` and `INTERACTION_ERROR` are negative fail-closed outcomes; they must not be described as biometric rejection, Touch ID rejection or proof that the human consciously chose Reject.
+
+Server-side acceptance of a terminal rejection requires all of the following:
+
+- authenticated client with `APPROVER` role;
+- client identity equals `request.intent.approverPrincipalId`;
+- request is still `PENDING` and its request TTL has not elapsed;
+- supplied challenge digest resolves to the exact unconsumed challenge;
+- HAA authority signature and request/action/intent bindings verify;
+- bound authenticator still belongs to the approver principal and is ACTIVE;
+- rejection reason is typed and allowed;
+- `CHALLENGE_EXPIRED` is accepted only when the bound challenge is actually expired;
+- non-expiry reasons cannot be used after challenge expiry.
+
+A valid reject consumes the challenge, transitions `PENDING -> REJECTED`, records reason/provenance/assurance, and never creates `ApprovalReceipt` or `ExecutionGrant`.
 
 ## State effects
 
@@ -86,31 +76,34 @@ PENDING
   +-- APPROVE -> APPROVED
   |
   +-- REJECT  -> REJECTED
-  |
-  +-- UNKNOWN -> PENDING (if still valid)
 ```
 
-Terminal technical/request expiry remains:
+The request lifecycle separately supports:
 
 ```text
-PENDING -> EXPIRED
+PENDING  -> EXPIRED
+APPROVED -> EXPIRED
 ```
 
-when the request lifecycle actually expires.
+when the request TTL itself expires.
+
+`CHALLENGE_EXPIRED` and request `EXPIRED` are therefore different concepts:
+
+- challenge expiry can terminate a still-valid request ceremony as REJECT;
+- request TTL expiry terminates the request lifecycle as EXPIRED.
 
 ## Fail-closed invariant
 
 ```text
 Only verified APPROVE evidence can create execution authority.
+Every other terminal ceremony outcome is REJECT.
 ```
-
-Therefore both REJECT and UNKNOWN are fail-closed with respect to execution.
 
 ## Compatibility rule
 
 HAA protocol v1 already contains `REJECTED` and `EXPIRED`. No existing signed v1 object is extended or reinterpreted by W8.
 
-W8 may add service/SDK response types and local ceremony records outside the frozen authorization-bearing schema set, but it must not silently add fields to:
+W8 adds service/SDK response metadata outside the frozen authorization-bearing schema set, but it does not silently add fields to:
 
 - `haa.intent.v1`
 - `haa.request.v1`
@@ -122,20 +115,18 @@ W8 may add service/SDK response types and local ceremony records outside the fro
 
 ## Caller contract
 
-The generic caller-facing shape is:
-
 ```ts
-type CeremonyOutcome = 'APPROVE' | 'REJECT' | 'UNKNOWN'
+type CeremonyOutcome = 'APPROVE' | 'REJECT'
 
-interface CeremonyResult {
-  outcome: CeremonyOutcome
-  requestId: string
-  reason?: string
-  state?: ApprovalState
-}
+type RejectionReason =
+  | 'USER_ESCAPE'
+  | 'WINDOW_CLOSED'
+  | 'TIMEOUT'
+  | 'CHALLENGE_EXPIRED'
+  | 'INTERACTION_ERROR'
 ```
 
-`state` is server state when known. `UNKNOWN` may be produced locally without a server mutation.
+A rejection record includes exact request/challenge binding, typed reason, timestamp, authenticated approver-channel provenance, and assurance classification.
 
 ## Non-goals
 
