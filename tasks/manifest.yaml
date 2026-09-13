@@ -51,19 +51,22 @@ tasks:
   - {id: W7-T03, wave: W7, title: "Publishable TypeScript SDK package", depends_on: [W4-T01, W7-T01], status: DONE}
   - {id: W7-T04, wave: W7, title: "Optional WebAuthn adapter spike", depends_on: [W7-T01], status: DEFERRED_OPTIONAL}
   - {id: W7-T05, wave: W7, title: "Final cross-model security/architecture review", depends_on: [W7-T01, W7-T02, W7-T03], status: READY_FOR_EXTERNAL_REVIEW}
-  - {id: W8-T01, wave: W8A, title: "DubBridge integration ADR and authority boundaries", depends_on: [W7-T05], status: FUTURE}
-  - {id: W8-T02, wave: W8A, title: "DubBridge task lifecycle and ceremony outcome semantics", depends_on: [W8-T01], status: FUTURE}
-  - {id: W8-T03, wave: W8A, title: "TaskAuthorizationManifest v1", depends_on: [W8-T01, W8-T02], status: FUTURE}
-  - {id: W8-T04, wave: W8A, title: "TaskClosureManifest v1", depends_on: [W8-T01, W8-T02, W8-T03], status: FUTURE}
-  - {id: W8-T05, wave: W8B, title: "APPROVE / REJECT / UNKNOWN outcome records and fail-closed semantics", depends_on: [W8-T02, W7-T01], status: FUTURE}
-  - {id: W8-T06, wave: W8B, title: "dubbridge.task-start.v1 ActionProfile", depends_on: [W8-T03, W8-T05], status: FUTURE}
-  - {id: W8-T07, wave: W8B, title: "dubbridge.task-close.v1 ActionProfile", depends_on: [W8-T04, W8-T05], status: FUTURE}
-  - {id: W8-T08, wave: W8B, title: "DubBridge profile and ceremony-decision security gate", depends_on: [W8-T06, W8-T07], status: FUTURE}
-  - {id: W8-T09, wave: W8C, title: "DubBridge thin HAA client and configuration adapter", depends_on: [W8-T08, W7-T02, W7-T03], status: FUTURE}
-  - {id: W8-T10, wave: W8C, title: "DubBridge Task Start Gate", depends_on: [W8-T03, W8-T06, W8-T09], status: FUTURE}
-  - {id: W8-T11, wave: W8C, title: "DubBridge Task Closure Gate", depends_on: [W8-T04, W8-T07, W8-T09, W8-T10], status: FUTURE}
-  - {id: W8-T12, wave: W8D, title: "Automated DubBridge dual-gate end-to-end validation", depends_on: [W8-T10, W8-T11], status: FUTURE}
-  - {id: W8-T13, wave: W8D, title: "Physical macOS Touch ID dual-gate validation", depends_on: [W8-T12], status: FUTURE}
-  - {id: W8-T14, wave: W8E, title: "DubBridge HAA opt-in feature flag and workflow documentation", depends_on: [W8-T13], status: FUTURE}
-  - {id: W8-T15, wave: W8E, title: "Pilot HAA task authority on one real DubBridge task", depends_on: [W8-T14], status: FUTURE}
-  - {id: W8-T16, wave: W8E, title: "DubBridge HAA adoption/default-on decision gate", depends_on: [W8-T15], status: FUTURE}
+  - {id: W7-T06, wave: W7, title: "Runtime API schemas and bounded inputs", depends_on: [W2-T09, W7-T01], status: READY}
+  - {id: W7-T07, wave: W7, title: "Deterministic dependency and build chain", depends_on: [W7-T02, W7-T03], status: READY}
+  - {id: W7-T08, wave: W7, title: "Client credential lifecycle and role separation", depends_on: [W2-T02, W2-T08, W7-T01], status: READY}
+  - {id: W7-T09, wave: W7, title: "Authority key ring and rotation", depends_on: [W1-T04, W1-T06, W7-T01], status: READY}
+  - {id: W7-T10, wave: W7, title: "Network edge production profile", depends_on: [W7-T02, W7-T06], status: FUTURE}
+  - {id: W7-T11, wave: W7, title: "Audit tamper-evidence", depends_on: [W2-T08, W7-T09], status: FUTURE}
+  - {id: W7-T12, wave: W7, title: "Authenticator assurance model", depends_on: [W3-T06, W7-T01], status: READY}
+  - {id: W7-T13, wave: W7, title: "Detached ExecutionGrant verification", depends_on: [W1-T06, W4-T01, W7-T03, W7-T09], status: FUTURE}
+  - {id: W7-T14, wave: W7, title: "Persistence, backup and recovery contract", depends_on: [W2-T01, W7-T02, W7-T09], status: FUTURE}
+  - {id: W7-T15, wave: W7, title: "Software production-readiness gate", depends_on: [W7-T05, W7-T06, W7-T07, W7-T08, W7-T09, W7-T10, W7-T11, W7-T12, W7-T13, W7-T14], status: FUTURE}
+  - {id: W8-T01, wave: W8, title: "Ceremony outcome ADR", depends_on: [W7-T01], status: READY}
+  - {id: W8-T02, wave: W8, title: "Negative-decision provenance and threat model", depends_on: [W8-T01, W7-T12], status: FUTURE}
+  - {id: W8-T03, wave: W8, title: "Explicit REJECT service path", depends_on: [W8-T02, W7-T06, W7-T08], status: FUTURE}
+  - {id: W8-T04, wave: W8, title: "UNKNOWN indeterminate ceremony semantics", depends_on: [W8-T01], status: FUTURE}
+  - {id: W8-T05, wave: W8, title: "macOS approver APPROVE/REJECT/UNKNOWN UX", depends_on: [W8-T03, W8-T04, W3-T06], status: FUTURE}
+  - {id: W8-T06, wave: W8, title: "SDK and CLI ceremony result contract", depends_on: [W8-T03, W8-T04, W7-T03], status: FUTURE}
+  - {id: W8-T07, wave: W8, title: "Ceremony audit and observability semantics", depends_on: [W8-T03, W8-T04, W7-T11], status: FUTURE}
+  - {id: W8-T08, wave: W8, title: "HAA-only automated ceremony end-to-end validation", depends_on: [W8-T05, W8-T06, W8-T07], status: FUTURE}
+  - {id: W8-T09, wave: W8, title: "Physical macOS ceremony and compatibility gate", depends_on: [W8-T08, W7-T15], status: FUTURE}
