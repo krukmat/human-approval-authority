@@ -1,1 +1,20 @@
-{"name":"@haa/sdk","version":"0.1.0","type":"module","exports":"./src/index.ts"}
+{
+  "name": "@haa/sdk",
+  "version": "0.2.0",
+  "type": "module",
+  "files": ["dist", "README.md"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@haa/protocol": "^1.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  }
+}
