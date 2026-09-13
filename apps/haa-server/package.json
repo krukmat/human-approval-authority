@@ -1,1 +1,1 @@
-{"name":"@haa/server","version":"0.1.0","type":"module","dependencies":{"fastify":"^5.6.0"}}
+{"name":"@haa/server","version":"0.1.0","type":"module","dependencies":{"fastify":"^5.6.0","zod":"^4.1.0"}}
