@@ -12,6 +12,8 @@ jobs:
       - run: npm ci
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
+      - name: Validate physical ceremony orchestrator syntax
+        run: node --check scripts/validate-macos-ceremony-e2e.mjs
       - run: npm run pack:check
       - run: npm test
       - run: npx tsc --noEmit
