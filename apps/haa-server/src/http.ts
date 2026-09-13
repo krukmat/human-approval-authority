@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import { z } from 'zod';
 import type { ActionSpec, ApprovalEvidence, AuthenticatorRecord, JsonValue } from '../../../packages/protocol/src/index.ts';
+import type { SignatureAlgorithm } from '../../../packages/core/src/index.ts';
 import type { HaaApplication } from './application.ts';
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -91,7 +92,18 @@ function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   return result.data;
 }
 
-export function buildHttpServer(app: HaaApplication) {
+export interface HttpServerOptions {
+  authorityKeys?: () => Array<{
+    keyId: string;
+    algorithm: SignatureAlgorithm;
+    publicKeyPem: string;
+    status: 'ACTIVE' | 'RETIRED';
+    createdAt: string;
+    retiredAt?: string;
+  }>;
+}
+
+export function buildHttpServer(app: HaaApplication, options: HttpServerOptions = {}) {
   const server = Fastify({ logger: true, bodyLimit: MAX_BODY_BYTES });
 
   server.setErrorHandler((error, _request, reply) => {
@@ -110,6 +122,13 @@ export function buildHttpServer(app: HaaApplication) {
     algorithm: app.signer.algorithm,
     publicKeyPem: app.signer.publicKeyPem,
   }));
+  server.get('/v1/authority-keys', async () => options.authorityKeys?.() ?? [{
+    keyId: app.signer.keyId,
+    algorithm: app.signer.algorithm,
+    publicKeyPem: app.signer.publicKeyPem,
+    status: 'ACTIVE' as const,
+    createdAt: 'unknown',
+  }]);
 
   server.post('/v1/approval-requests', async (request) => {
     const body = parse(createRequestSchema, request.body);
