@@ -36,7 +36,7 @@ let package = try JSONDecoder().decode(ChallengePackage.self, from: challengeDat
 let authorityPEM = try String(contentsOfFile: authorityKeyPath, encoding: .utf8)
 let verified = try verifyChallenge(package, authorityPublicKeyPEM: authorityPEM)
 guard verified.payload.authenticatorId == authenticatorId else { throw NSError(domain: "HAA", code: 20, userInfo: [NSLocalizedDescriptionKey: "Authenticator mismatch"]) }
-guard askForApproval(verified.payload) else { exit(3) }
+guard await askForApproval(verified.payload) else { exit(3) }
 let signature = try authenticator.signApprovalDigest(verified.digest, prompt: "Approve HAA request \(verified.payload.requestId)")
 let evidence = ApprovalEvidence(authenticatorId: authenticatorId, requestId: verified.payload.requestId, challengeDigest: verified.digest, signature: signature)
 let out = try JSONEncoder().encode(evidence)
