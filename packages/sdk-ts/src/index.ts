@@ -1,3 +1,4 @@
+import { createPublicKey, verify as verifyCryptoSignature } from 'node:crypto';
 import type { ActionSpec, ApprovalRequest, ExecutionGrant } from '@haa/protocol';
 
 export type { ActionSpec, ApprovalRequest, ExecutionGrant } from '@haa/protocol';
@@ -15,6 +16,140 @@ export interface AuthorizeInput {
   executionId: string;
   actualAction: ActionSpec;
   actualState?: Record<string, unknown>;
+}
+
+export interface AuthorityVerificationKey {
+  keyId: string;
+  algorithm: 'Ed25519' | 'ES256';
+  publicKeyPem: string;
+  status?: 'ACTIVE' | 'RETIRED';
+  createdAt?: string;
+  retiredAt?: string;
+}
+
+export interface VerifyExecutionGrantInput {
+  grant: ExecutionGrant;
+  authorityKeys: AuthorityVerificationKey[];
+  expectedRequestId: string;
+  expectedActionDigest: string;
+  expectedExecutorAudience: string;
+  expectedExecutionId?: string;
+  now?: Date;
+}
+
+export type GrantVerificationErrorCode =
+  | 'INVALID_GRANT_SHAPE'
+  | 'UNSUPPORTED_GRANT_SCHEMA'
+  | 'UNSUPPORTED_SIGNATURE_ALGORITHM'
+  | 'UNKNOWN_AUTHORITY_KEY'
+  | 'AUTHORITY_ALGORITHM_MISMATCH'
+  | 'INVALID_GRANT_SIGNATURE'
+  | 'GRANT_EXPIRED'
+  | 'REQUEST_ID_MISMATCH'
+  | 'EXECUTION_ID_MISMATCH'
+  | 'ACTION_DIGEST_MISMATCH'
+  | 'EXECUTOR_AUDIENCE_MISMATCH';
+
+export class HaaGrantVerificationError extends Error {
+  readonly code: GrantVerificationErrorCode;
+
+  constructor(code: GrantVerificationErrorCode) {
+    super(code);
+    this.name = 'HaaGrantVerificationError';
+    this.code = code;
+  }
+}
+
+function canonicalize(value: unknown): string {
+  if (value === null) return 'null';
+  if (typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new HaaGrantVerificationError('INVALID_GRANT_SHAPE');
+    if (Object.is(value, -0)) return '0';
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
+  if (typeof value !== 'object') throw new HaaGrantVerificationError('INVALID_GRANT_SHAPE');
+  const object = value as Record<string, unknown>;
+  const keys = Object.keys(object).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalize(object[key])}`).join(',')}}`;
+}
+
+const GRANT_KEYS = [
+  'actionDigest',
+  'authorityKeyId',
+  'executionId',
+  'executorAudience',
+  'expiresAt',
+  'issuedAt',
+  'requestId',
+  'schema',
+  'signature',
+  'signatureAlgorithm',
+].sort();
+
+function assertGrantShape(grant: ExecutionGrant): void {
+  const keys = Object.keys(grant as unknown as Record<string, unknown>).sort();
+  if (keys.length !== GRANT_KEYS.length || keys.some((key, index) => key !== GRANT_KEYS[index])) {
+    throw new HaaGrantVerificationError('INVALID_GRANT_SHAPE');
+  }
+  const requiredStrings = [
+    grant.requestId,
+    grant.executionId,
+    grant.actionDigest,
+    grant.executorAudience,
+    grant.issuedAt,
+    grant.expiresAt,
+    grant.authorityKeyId,
+    grant.signature,
+  ];
+  if (requiredStrings.some((value) => typeof value !== 'string' || value.length === 0)) {
+    throw new HaaGrantVerificationError('INVALID_GRANT_SHAPE');
+  }
+}
+
+export function verifyExecutionGrant(input: VerifyExecutionGrantInput): ExecutionGrant {
+  const { grant } = input;
+  assertGrantShape(grant);
+  if (grant.schema !== 'haa.execution-grant.v1') throw new HaaGrantVerificationError('UNSUPPORTED_GRANT_SCHEMA');
+  if (grant.signatureAlgorithm !== 'Ed25519' && grant.signatureAlgorithm !== 'ES256') {
+    throw new HaaGrantVerificationError('UNSUPPORTED_SIGNATURE_ALGORITHM');
+  }
+
+  const authorityKey = input.authorityKeys.find((key) => key.keyId === grant.authorityKeyId);
+  if (!authorityKey) throw new HaaGrantVerificationError('UNKNOWN_AUTHORITY_KEY');
+  if (authorityKey.algorithm !== grant.signatureAlgorithm) throw new HaaGrantVerificationError('AUTHORITY_ALGORITHM_MISMATCH');
+
+  const unsigned = {
+    schema: grant.schema,
+    requestId: grant.requestId,
+    executionId: grant.executionId,
+    actionDigest: grant.actionDigest,
+    executorAudience: grant.executorAudience,
+    issuedAt: grant.issuedAt,
+    expiresAt: grant.expiresAt,
+    authorityKeyId: grant.authorityKeyId,
+    signatureAlgorithm: grant.signatureAlgorithm,
+  };
+  const bytes = Buffer.from(canonicalize(unsigned), 'utf8');
+  const publicKey = createPublicKey(authorityKey.publicKeyPem);
+  const signature = Buffer.from(grant.signature, 'base64url');
+  const validSignature = grant.signatureAlgorithm === 'Ed25519'
+    ? verifyCryptoSignature(null, bytes, publicKey, signature)
+    : verifyCryptoSignature('sha256', bytes, publicKey, signature);
+  if (!validSignature) throw new HaaGrantVerificationError('INVALID_GRANT_SIGNATURE');
+
+  if (grant.requestId !== input.expectedRequestId) throw new HaaGrantVerificationError('REQUEST_ID_MISMATCH');
+  if (input.expectedExecutionId !== undefined && grant.executionId !== input.expectedExecutionId) {
+    throw new HaaGrantVerificationError('EXECUTION_ID_MISMATCH');
+  }
+  if (grant.actionDigest !== input.expectedActionDigest) throw new HaaGrantVerificationError('ACTION_DIGEST_MISMATCH');
+  if (grant.executorAudience !== input.expectedExecutorAudience) throw new HaaGrantVerificationError('EXECUTOR_AUDIENCE_MISMATCH');
+
+  const expiresAt = Date.parse(grant.expiresAt);
+  if (!Number.isFinite(expiresAt)) throw new HaaGrantVerificationError('INVALID_GRANT_SHAPE');
+  if (expiresAt <= (input.now ?? new Date()).getTime()) throw new HaaGrantVerificationError('GRANT_EXPIRED');
+  return grant;
 }
 
 export class HaaApiError extends Error {
@@ -65,6 +200,10 @@ export class HaaClient {
 
     if (response.status === 204 || !text) return undefined as T;
     return body as T;
+  }
+
+  getAuthorityKeys(): Promise<AuthorityVerificationKey[]> {
+    return this.call('/v1/authority-keys');
   }
 
   requestApproval(input: RequestApprovalInput): Promise<ApprovalRequest> {
