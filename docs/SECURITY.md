@@ -23,6 +23,12 @@
 21. Terminal ceremony authority: only successful verified positive authenticator evidence can produce APPROVE; every other terminal ceremony outcome is REJECT and can never create `ApprovalReceipt` or `ExecutionGrant`.
 22. Negative-assurance truthfulness: `USER_ESCAPE` may claim `explicit-human-negative-action`; `WINDOW_CLOSED`, `TIMEOUT`, `CHALLENGE_EXPIRED` and `INTERACTION_ERROR` are only `fail-closed-terminal` outcomes and must not be described as biometric or explicit human rejection.
 23. Expiry separation: challenge-level `CHALLENGE_EXPIRED` rejection is distinct from request-TTL lifecycle `EXPIRED`.
+24. Display completeness: each built-in ActionProfile explicitly allowlists accepted semantic payload/precondition fields; unknown fields fail closed, and accepted authorization-significant fields are displayed or intentionally represented by the profile.
+25. Authenticator revocation cuts future execution authority: an APPROVED but unconsumed request may issue a grant only while the receipt's authenticator remains ACTIVE. Revocation materializes `APPROVED -> REVOKED` before new execution authority is minted.
+26. Live grant key status: detached live `ExecutionGrant` verification requires the referenced authority key to be currently ACTIVE. RETIRED public keys are historical-verification material and cannot authorize live execution.
+27. Live grant temporal policy: detached grants must have valid issuance/expiry ordering, bounded TTL, acceptable clock skew and, when available, issuance no earlier than the ACTIVE key's creation time.
+28. Trusted verification metadata: detached executors obtain authority-key status/metadata from an authenticated trusted HAA channel or pinned operator configuration, never from the same untrusted intermediary carrying the grant.
+29. Edge bootstrap fail-closed: predictable `HAA_DEV_BOOTSTRAP` credentials are rejected under the `edge` network profile unless an explicitly unsafe test-only override is supplied.
 
 ## Current trust assumptions
 
@@ -33,4 +39,4 @@
 - TLS is expected to be provided by the deployment boundary (reverse proxy/service mesh) when HAA is accessed over a network.
 - SQLite is the current single-node/single-writer persistence target; HA/multi-writer deployment is outside v0.x scope.
 
-See `docs/AUTHENTICATOR-ASSURANCE.md`, `docs/AUDIT-INTEGRITY.md` and `docs/W8-CEREMONY-OUTCOMES.md` for detailed assurance boundaries.
+See `docs/AUTHENTICATOR-ASSURANCE.md`, `docs/AUDIT-INTEGRITY.md`, `docs/NETWORK-EDGE.md`, `docs/W7-T05-REVIEW-2026-09-13.md` and `docs/W8-CEREMONY-OUTCOMES.md` for detailed assurance boundaries.
