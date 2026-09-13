@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import type {
   ApprovalChallengePackage,
@@ -7,6 +8,37 @@ import type {
   AuthenticatorRecord,
   ExecutionGrant,
 } from '../../protocol/src/index.ts';
+
+export type ClientRole = 'REQUESTER' | 'APPROVER' | 'EXECUTOR';
+
+export interface AuthenticatedClient {
+  id: string;
+  roles: ClientRole[];
+  credentialVersion: number;
+}
+
+export interface ClientRecord extends AuthenticatedClient {
+  enabled: boolean;
+  credentialExpiresAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClientCredentialHistoryEntry {
+  version: number;
+  status: 'ACTIVE' | 'RETIRED' | 'REVOKED';
+  createdAt: string;
+  expiresAt?: string;
+  retiredAt?: string;
+}
+
+const ALL_CLIENT_ROLES: ClientRole[] = ['REQUESTER', 'APPROVER', 'EXECUTOR'];
+
+function normalizeRoles(roles: ClientRole[]): ClientRole[] {
+  const unique = [...new Set(roles)];
+  if (unique.length === 0 || unique.some((role) => !ALL_CLIENT_ROLES.includes(role))) throw new Error('INVALID_CLIENT_ROLES');
+  return unique;
+}
 
 export class SqliteStore {
   readonly db: DatabaseSync;
@@ -18,7 +50,32 @@ export class SqliteStore {
       CREATE TABLE IF NOT EXISTS clients (
         id TEXT PRIMARY KEY,
         api_key_hash TEXT NOT NULL UNIQUE,
-        enabled INTEGER NOT NULL DEFAULT 1
+        enabled INTEGER NOT NULL DEFAULT 1,
+        roles_json TEXT NOT NULL DEFAULT '["REQUESTER","APPROVER","EXECUTOR"]',
+        credential_version INTEGER NOT NULL DEFAULT 1,
+        credential_expires_at TEXT,
+        created_at TEXT,
+        updated_at TEXT
+      );
+      CREATE TABLE IF NOT EXISTS client_credential_history (
+        client_id TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        api_key_hash TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT,
+        retired_at TEXT,
+        PRIMARY KEY(client_id, version),
+        FOREIGN KEY(client_id) REFERENCES clients(id)
+      );
+      CREATE TABLE IF NOT EXISTS admin_audit_events (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT NOT NULL UNIQUE,
+        event_type TEXT NOT NULL,
+        actor_id TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        at TEXT NOT NULL,
+        details_json TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS requests (
         id TEXT PRIMARY KEY,
@@ -69,18 +126,174 @@ export class SqliteStore {
         at TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_audit_request ON audit_events(request_id, at);
+      CREATE INDEX IF NOT EXISTS idx_admin_audit_target ON admin_audit_events(target_id, seq);
     `);
+
+    this.ensureClientColumn('roles_json', `TEXT NOT NULL DEFAULT '["REQUESTER","APPROVER","EXECUTOR"]'`);
+    this.ensureClientColumn('credential_version', 'INTEGER NOT NULL DEFAULT 1');
+    this.ensureClientColumn('credential_expires_at', 'TEXT');
+    this.ensureClientColumn('created_at', 'TEXT');
+    this.ensureClientColumn('updated_at', 'TEXT');
+
+    const now = new Date().toISOString();
+    this.db.prepare('UPDATE clients SET created_at = COALESCE(created_at, ?), updated_at = COALESCE(updated_at, ?)').run(now, now);
+    this.db.prepare(`INSERT OR IGNORE INTO client_credential_history(
+      client_id, version, api_key_hash, status, created_at, expires_at, retired_at
+    ) SELECT id, credential_version, api_key_hash,
+      CASE WHEN enabled = 1 THEN 'ACTIVE' ELSE 'REVOKED' END,
+      COALESCE(created_at, ?), credential_expires_at,
+      CASE WHEN enabled = 1 THEN NULL ELSE COALESCE(updated_at, ?) END
+      FROM clients`).run(now, now);
   }
 
   close(): void { this.db.close(); }
 
-  registerClient(id: string, apiKeyHash: string): void {
-    this.db.prepare('INSERT OR REPLACE INTO clients(id, api_key_hash, enabled) VALUES (?, ?, 1)').run(id, apiKeyHash);
+  registerClient(
+    id: string,
+    apiKeyHash: string,
+    roles: ClientRole[] = ALL_CLIENT_ROLES,
+    options: { expiresAt?: string; now?: string; actorId?: string } = {},
+  ): void {
+    const normalizedRoles = normalizeRoles(roles);
+    const now = options.now ?? new Date().toISOString();
+    const existing = this.db.prepare('SELECT api_key_hash, enabled FROM clients WHERE id = ?').get(id) as { api_key_hash: string; enabled: number } | undefined;
+    if (existing) {
+      if (existing.api_key_hash !== apiKeyHash) throw new Error('CLIENT_ALREADY_EXISTS_USE_ROTATE');
+      if (existing.enabled !== 1) throw new Error('CLIENT_DISABLED');
+      this.db.prepare('UPDATE clients SET roles_json=?, credential_expires_at=?, updated_at=? WHERE id=?').run(
+        JSON.stringify(normalizedRoles), options.expiresAt ?? null, now, id,
+      );
+      return;
+    }
+
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      this.db.prepare(`INSERT INTO clients(
+        id, api_key_hash, enabled, roles_json, credential_version, credential_expires_at, created_at, updated_at
+      ) VALUES (?, ?, 1, ?, 1, ?, ?, ?)`).run(
+        id, apiKeyHash, JSON.stringify(normalizedRoles), options.expiresAt ?? null, now, now,
+      );
+      this.db.prepare(`INSERT INTO client_credential_history(
+        client_id, version, api_key_hash, status, created_at, expires_at
+      ) VALUES (?, 1, ?, 'ACTIVE', ?, ?)`).run(id, apiKeyHash, now, options.expiresAt ?? null);
+      this.appendAdminAuditInternal('CLIENT_PROVISIONED', options.actorId ?? 'local-admin', id, now, {
+        roles: normalizedRoles,
+        credentialVersion: 1,
+        expiresAt: options.expiresAt ?? null,
+      });
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
   }
 
-  authenticateClient(apiKeyHash: string): string | null {
-    const row = this.db.prepare('SELECT id FROM clients WHERE api_key_hash = ? AND enabled = 1').get(apiKeyHash) as { id: string } | undefined;
-    return row?.id ?? null;
+  authenticateClient(apiKeyHash: string, now = new Date().toISOString()): AuthenticatedClient | null {
+    const row = this.db.prepare(`SELECT id, roles_json, credential_version, credential_expires_at
+      FROM clients WHERE api_key_hash = ? AND enabled = 1`).get(apiKeyHash) as {
+        id: string;
+        roles_json: string;
+        credential_version: number;
+        credential_expires_at: string | null;
+      } | undefined;
+    if (!row) return null;
+    if (row.credential_expires_at && Date.parse(row.credential_expires_at) <= Date.parse(now)) return null;
+    return { id: row.id, roles: JSON.parse(row.roles_json) as ClientRole[], credentialVersion: row.credential_version };
+  }
+
+  getClient(id: string): ClientRecord | null {
+    const row = this.db.prepare(`SELECT id, roles_json, credential_version, enabled, credential_expires_at, created_at, updated_at
+      FROM clients WHERE id = ?`).get(id) as any;
+    if (!row) return null;
+    return {
+      id: row.id,
+      roles: JSON.parse(row.roles_json) as ClientRole[],
+      credentialVersion: row.credential_version,
+      enabled: row.enabled === 1,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      ...(row.credential_expires_at ? { credentialExpiresAt: row.credential_expires_at } : {}),
+    };
+  }
+
+  rotateClientCredential(
+    id: string,
+    apiKeyHash: string,
+    options: { expiresAt?: string; now?: string; actorId?: string } = {},
+  ): number {
+    const now = options.now ?? new Date().toISOString();
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const row = this.db.prepare('SELECT enabled, credential_version FROM clients WHERE id=?').get(id) as { enabled: number; credential_version: number } | undefined;
+      if (!row) throw new Error('CLIENT_NOT_FOUND');
+      if (row.enabled !== 1) throw new Error('CLIENT_DISABLED');
+      const nextVersion = row.credential_version + 1;
+      this.db.prepare(`UPDATE client_credential_history
+        SET status='RETIRED', retired_at=?
+        WHERE client_id=? AND version=? AND status='ACTIVE'`).run(now, id, row.credential_version);
+      this.db.prepare(`UPDATE clients SET api_key_hash=?, credential_version=?, credential_expires_at=?, updated_at=? WHERE id=?`).run(
+        apiKeyHash, nextVersion, options.expiresAt ?? null, now, id,
+      );
+      this.db.prepare(`INSERT INTO client_credential_history(
+        client_id, version, api_key_hash, status, created_at, expires_at
+      ) VALUES (?, ?, ?, 'ACTIVE', ?, ?)`).run(id, nextVersion, apiKeyHash, now, options.expiresAt ?? null);
+      this.appendAdminAuditInternal('CLIENT_CREDENTIAL_ROTATED', options.actorId ?? 'local-admin', id, now, {
+        credentialVersion: nextVersion,
+        expiresAt: options.expiresAt ?? null,
+      });
+      this.db.exec('COMMIT');
+      return nextVersion;
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
+  disableClient(id: string, options: { now?: string; actorId?: string } = {}): boolean {
+    const now = options.now ?? new Date().toISOString();
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const row = this.db.prepare('SELECT credential_version FROM clients WHERE id=? AND enabled=1').get(id) as { credential_version: number } | undefined;
+      if (!row) {
+        this.db.exec('ROLLBACK');
+        return false;
+      }
+      this.db.prepare('UPDATE clients SET enabled=0, updated_at=? WHERE id=?').run(now, id);
+      this.db.prepare(`UPDATE client_credential_history SET status='REVOKED', retired_at=?
+        WHERE client_id=? AND version=? AND status='ACTIVE'`).run(now, id, row.credential_version);
+      this.appendAdminAuditInternal('CLIENT_DISABLED', options.actorId ?? 'local-admin', id, now, {
+        credentialVersion: row.credential_version,
+      });
+      this.db.exec('COMMIT');
+      return true;
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
+  listClientCredentialHistory(id: string): ClientCredentialHistoryEntry[] {
+    const rows = this.db.prepare(`SELECT version, status, created_at, expires_at, retired_at
+      FROM client_credential_history WHERE client_id=? ORDER BY version`).all(id) as any[];
+    return rows.map((row) => ({
+      version: row.version,
+      status: row.status,
+      createdAt: row.created_at,
+      ...(row.expires_at ? { expiresAt: row.expires_at } : {}),
+      ...(row.retired_at ? { retiredAt: row.retired_at } : {}),
+    }));
+  }
+
+  listAdminAudit(targetId: string): Array<{ eventType: string; actorId: string; targetId: string; at: string; details: Record<string, unknown> }> {
+    const rows = this.db.prepare(`SELECT event_type, actor_id, target_id, at, details_json
+      FROM admin_audit_events WHERE target_id=? ORDER BY seq`).all(targetId) as any[];
+    return rows.map((row) => ({
+      eventType: row.event_type,
+      actorId: row.actor_id,
+      targetId: row.target_id,
+      at: row.at,
+      details: JSON.parse(row.details_json),
+    }));
   }
 
   createRequest(request: ApprovalRequest): void {
@@ -211,5 +424,21 @@ export class SqliteStore {
       this.db.exec('ROLLBACK');
       throw error;
     }
+  }
+
+  private ensureClientColumn(name: string, definition: string): void {
+    const columns = this.db.prepare('PRAGMA table_info(clients)').all() as Array<{ name: string }>;
+    if (!columns.some((column) => column.name === name)) this.db.exec(`ALTER TABLE clients ADD COLUMN ${name} ${definition}`);
+  }
+
+  private appendAdminAuditInternal(
+    eventType: string,
+    actorId: string,
+    targetId: string,
+    at: string,
+    details: Record<string, unknown>,
+  ): void {
+    this.db.prepare(`INSERT INTO admin_audit_events(id,event_type,actor_id,target_id,at,details_json)
+      VALUES (?,?,?,?,?,?)`).run(randomUUID(), eventType, actorId, targetId, at, JSON.stringify(details));
   }
 }
