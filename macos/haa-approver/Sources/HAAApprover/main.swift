@@ -12,6 +12,11 @@ func printJSON<T: Encodable>(_ value: T) throws {
     print(String(decoding: data, as: UTF8.self))
 }
 
+func emitReject(_ verified: VerifiedChallenge, reason: RejectionReason) throws -> Never {
+    try printJSON(CeremonyResultOutput.reject(requestId: verified.payload.requestId, challengeDigest: verified.digest, reason: reason))
+    exit(3)
+}
+
 let authenticatorId = arg("--authenticator-id") ?? "mac-default"
 let authenticator = SecureEnclaveAuthenticator(authenticatorId: authenticatorId)
 
@@ -23,12 +28,7 @@ if CommandLine.arguments.contains("--delete") {
 
 if CommandLine.arguments.contains("--enroll") {
     let publicKey = try authenticator.enroll()
-    let output: [String: Any] = [
-        "id": authenticatorId,
-        "type": "apple-secure-enclave",
-        "publicKeyPem": publicKey,
-        "signatureAlgorithm": "ES256"
-    ]
+    let output: [String: Any] = ["id": authenticatorId, "type": "apple-secure-enclave", "publicKeyPem": publicKey, "signatureAlgorithm": "ES256"]
     let data = try JSONSerialization.data(withJSONObject: output, options: [.prettyPrinted, .sortedKeys])
     print(String(decoding: data, as: UTF8.self))
     exit(0)
@@ -43,6 +43,7 @@ let package = try JSONDecoder().decode(ChallengePackage.self, from: challengeDat
 let authorityPEM = try String(contentsOfFile: authorityKeyPath, encoding: .utf8)
 let verified = try verifyChallenge(package, authorityPublicKeyPEM: authorityPEM)
 guard verified.payload.authenticatorId == authenticatorId else { throw NSError(domain: "HAA", code: 20, userInfo: [NSLocalizedDescriptionKey: "Authenticator mismatch"]) }
+if isChallengeExpired(verified) { try emitReject(verified, reason: .challengeExpired) }
 let timeoutSeconds = arg("--timeout-seconds").flatMap(TimeInterval.init)
 
 switch await askForApproval(verified.payload, timeoutSeconds: timeoutSeconds) {
@@ -53,13 +54,8 @@ case .approve:
         try printJSON(evidence)
         exit(0)
     } catch {
-        try printJSON(CeremonyResultOutput.unknown(requestId: verified.payload.requestId, challengeDigest: verified.digest, reason: .authenticatorUnavailable))
-        exit(4)
+        try emitReject(verified, reason: .interactionError)
     }
-case .reject:
-    try printJSON(CeremonyResultOutput.reject(requestId: verified.payload.requestId, challengeDigest: verified.digest))
-    exit(3)
-case .unknown(let reason):
-    try printJSON(CeremonyResultOutput.unknown(requestId: verified.payload.requestId, challengeDigest: verified.digest, reason: reason))
-    exit(4)
+case .reject(let reason):
+    try emitReject(verified, reason: reason)
 }
