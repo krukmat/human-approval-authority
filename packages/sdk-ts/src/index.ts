@@ -1,15 +1,22 @@
 import { createPublicKey, verify as verifyCryptoSignature } from 'node:crypto';
-import type { ActionSpec, ApprovalRequest, ExecutionGrant } from '../../protocol/src/index.ts';
-import { canonicalize } from '../../core/src/canonical.ts';
+import type { ActionSpec, ApprovalRequest, ExecutionGrant } from '@haa/protocol';
+
+export type { ActionSpec, ApprovalRequest, ApprovalState, ExecutionGrant } from '@haa/protocol';
 
 export type CeremonyOutcome = 'APPROVE' | 'REJECT';
-
 export type RejectionReason =
   | 'USER_ESCAPE'
   | 'WINDOW_CLOSED'
   | 'TIMEOUT'
   | 'CHALLENGE_EXPIRED'
   | 'INTERACTION_ERROR';
+export type RejectionAssurance = 'explicit-human-negative-action' | 'fail-closed-terminal';
+
+export interface CeremonyResult {
+  outcome: CeremonyOutcome;
+  requestId: string;
+  reason?: RejectionReason;
+}
 
 export interface RejectionRecord {
   outcome: 'REJECT';
@@ -19,115 +26,97 @@ export interface RejectionRecord {
   reason: RejectionReason;
   rejectedAt: string;
   provenance: 'authenticated-approver-channel';
-  assurance: 'explicit-human-negative-action' | 'fail-closed-terminal';
+  assurance: RejectionAssurance;
 }
 
-export interface AuthorityPublicKey {
+export interface RejectApprovalInput {
+  requestId: string;
+  challengeDigest: string;
+  reason?: RejectionReason;
+}
+
+export interface RequestApprovalInput {
+  action: ActionSpec;
+  approverPrincipalId: string;
+  executorAudience: string;
+  requestId?: string;
+  ttlMs?: number;
+}
+
+export interface AuthorizeInput {
+  requestId: string;
+  executionId: string;
+  actualAction: ActionSpec;
+  actualState?: Record<string, unknown>;
+}
+
+export interface AuthorityVerificationKey {
   keyId: string;
   algorithm: 'Ed25519' | 'ES256';
   publicKeyPem: string;
-  status: 'ACTIVE' | 'RETIRED';
+  status?: 'ACTIVE' | 'RETIRED';
   createdAt?: string;
   retiredAt?: string;
 }
 
-export class HaaGrantVerificationError extends Error {
-  readonly code: string;
+export const DEFAULT_MAX_EXECUTION_GRANT_TTL_MS = 30_000;
+export const DEFAULT_EXECUTION_GRANT_CLOCK_SKEW_MS = 5_000;
 
-  constructor(code: string) {
+export interface VerifyExecutionGrantInput {
+  grant: ExecutionGrant;
+  authorityKeys: AuthorityVerificationKey[];
+  expectedRequestId: string;
+  expectedActionDigest: string;
+  expectedExecutorAudience: string;
+  expectedExecutionId?: string;
+  now?: Date;
+  maxTtlMs?: number;
+  clockSkewMs?: number;
+}
+
+export type GrantVerificationErrorCode =
+  | 'INVALID_GRANT_SHAPE'
+  | 'UNSUPPORTED_GRANT_SCHEMA'
+  | 'UNSUPPORTED_SIGNATURE_ALGORITHM'
+  | 'UNKNOWN_AUTHORITY_KEY'
+  | 'AUTHORITY_KEY_NOT_ACTIVE'
+  | 'AUTHORITY_KEY_METADATA_INVALID'
+  | 'AUTHORITY_ALGORITHM_MISMATCH'
+  | 'INVALID_GRANT_SIGNATURE'
+  | 'GRANT_INVALID_TIME_RANGE'
+  | 'INVALID_VERIFICATION_TIME'
+  | 'GRANT_ISSUED_IN_FUTURE'
+  | 'GRANT_ISSUED_BEFORE_KEY_ACTIVE'
+  | 'GRANT_TTL_EXCEEDS_POLICY'
+  | 'GRANT_EXPIRED'
+  | 'REQUEST_ID_MISMATCH'
+  | 'EXECUTION_ID_MISMATCH'
+  | 'ACTION_DIGEST_MISMATCH'
+  | 'EXECUTOR_AUDIENCE_MISMATCH';
+
+export class HaaGrantVerificationError extends Error {
+  readonly code: GrantVerificationErrorCode;
+
+  constructor(code: GrantVerificationErrorCode) {
     super(code);
     this.name = 'HaaGrantVerificationError';
     this.code = code;
   }
 }
 
-export interface VerifyExecutionGrantInput {
-  grant: ExecutionGrant;
-  authorityKeys: AuthorityPublicKey[];
-  expectedRequestId: string;
-  expectedExecutionId?: string;
-  expectedActionDigest: string;
-  expectedExecutorAudience: string;
-  now?: Date;
-  clockSkewMs?: number;
-  maxTtlMs?: number;
-}
-
-const DEFAULT_EXECUTION_GRANT_CLOCK_SKEW_MS = 5_000;
-const DEFAULT_MAX_EXECUTION_GRANT_TTL_MS = 30_000;
-
-export class HaaClient {
-  constructor(
-    readonly baseUrl: string,
-    readonly apiKey: string,
-  ) {}
-
-  async requestApproval(input: {
-    action: ActionSpec;
-    approverPrincipalId: string;
-    executorAudience: string;
-    policySnapshotHash?: string;
-    requestId?: string;
-    ttlMs?: number;
-  }): Promise<ApprovalRequest> {
-    return this.request('/v1/approval-requests', { method: 'POST', body: input }) as Promise<ApprovalRequest>;
+function canonicalize(value: unknown): string {
+  if (value === null) return 'null';
+  if (typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new HaaGrantVerificationError('INVALID_GRANT_SHAPE');
+    if (Object.is(value, -0)) return '0';
+    return JSON.stringify(value);
   }
-
-  async getApproval(requestId: string): Promise<ApprovalRequest> {
-    return this.request(`/v1/approval-requests/${encodeURIComponent(requestId)}`) as Promise<ApprovalRequest>;
-  }
-
-  async rejectApproval(input: {
-    requestId: string;
-    challengeDigest: string;
-    reason: RejectionReason;
-  }): Promise<RejectionRecord> {
-    return this.request(`/v1/approval-requests/${encodeURIComponent(input.requestId)}/reject`, {
-      method: 'POST',
-      body: { challengeDigest: input.challengeDigest, reason: input.reason },
-    }) as Promise<RejectionRecord>;
-  }
-
-  async authorize(input: {
-    requestId: string;
-    executionId: string;
-    actualAction: ActionSpec;
-    actualState?: Record<string, unknown>;
-  }): Promise<ExecutionGrant> {
-    return this.request(`/v1/approval-requests/${encodeURIComponent(input.requestId)}/authorize`, {
-      method: 'POST',
-      body: {
-        executionId: input.executionId,
-        actualAction: input.actualAction,
-        ...(input.actualState !== undefined ? { actualState: input.actualState } : {}),
-      },
-    }) as Promise<ExecutionGrant>;
-  }
-
-  async getAuthorityKeys(): Promise<AuthorityPublicKey[]> {
-    return this.request('/v1/authority-keys') as Promise<AuthorityPublicKey[]>;
-  }
-
-  private async request(path: string, options: { method?: string; body?: unknown } = {}): Promise<unknown> {
-    const response = await fetch(new URL(path, this.baseUrl), {
-      method: options.method ?? 'GET',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': this.apiKey,
-      },
-      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
-    });
-    const text = await response.text();
-    let body: unknown;
-    try { body = text ? JSON.parse(text) : undefined; } catch { body = text; }
-    if (!response.ok) {
-      const code = typeof body === 'object' && body !== null && 'error' in body && typeof (body as { error?: unknown }).error === 'string'
-        ? (body as { error: string }).error
-        : `HTTP_${response.status}`;
-      throw new HaaApiError(response.status, code, body);
-    }
-    return body;
-  }
+  if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
+  if (typeof value !== 'object') throw new HaaGrantVerificationError('INVALID_GRANT_SHAPE');
+  const object = value as Record<string, unknown>;
+  const keys = Object.keys(object).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalize(object[key])}`).join(',')}}`;
 }
 
 const GRANT_KEYS = [
@@ -237,5 +226,75 @@ export class HaaApiError extends Error {
     this.status = status;
     this.code = code;
     this.responseBody = responseBody;
+  }
+}
+
+export class HaaClient {
+  readonly baseUrl: string;
+  readonly apiKey: string;
+
+  constructor(baseUrl: string, apiKey: string) {
+    this.baseUrl = baseUrl;
+    this.apiKey = apiKey;
+  }
+
+  private async call<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const response = await fetch(new URL(path, this.baseUrl), {
+      ...init,
+      headers: { 'content-type': 'application/json', 'x-api-key': this.apiKey, ...(init.headers ?? {}) },
+    });
+
+    const text = await response.text();
+    let body: unknown;
+    if (text) {
+      try {
+        body = JSON.parse(text);
+      } catch {
+        body = text;
+      }
+    }
+
+    if (!response.ok) {
+      const code = typeof body === 'object' && body !== null && 'error' in body && typeof (body as { error?: unknown }).error === 'string'
+        ? (body as { error: string }).error
+        : `HTTP_${response.status}`;
+      throw new HaaApiError(response.status, code, body);
+    }
+
+    if (response.status === 204 || !text) return undefined as T;
+    return body as T;
+  }
+
+  getAuthorityKeys(): Promise<AuthorityVerificationKey[]> {
+    return this.call('/v1/authority-keys');
+  }
+
+  requestApproval(input: RequestApprovalInput): Promise<ApprovalRequest> {
+    return this.call('/v1/approval-requests', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  getApproval(requestId: string): Promise<ApprovalRequest> {
+    return this.call(`/v1/approval-requests/${encodeURIComponent(requestId)}`);
+  }
+
+  rejectApproval(input: RejectApprovalInput): Promise<RejectionRecord> {
+    return this.call(`/v1/approval-requests/${encodeURIComponent(input.requestId)}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({
+        challengeDigest: input.challengeDigest,
+        reason: input.reason ?? 'USER_ESCAPE',
+      }),
+    });
+  }
+
+  authorize(input: AuthorizeInput): Promise<ExecutionGrant> {
+    return this.call(`/v1/approval-requests/${encodeURIComponent(input.requestId)}/authorize`, {
+      method: 'POST',
+      body: JSON.stringify({
+        executionId: input.executionId,
+        actualAction: input.actualAction,
+        ...(input.actualState ? { actualState: input.actualState } : {}),
+      }),
+    });
   }
 }
