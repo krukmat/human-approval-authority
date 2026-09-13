@@ -26,6 +26,8 @@
     "rotate:client": "node --experimental-strip-types scripts/rotate-client.mjs",
     "disable:client": "node --experimental-strip-types scripts/disable-client.mjs",
     "rotate:authority-key": "node --experimental-strip-types scripts/rotate-authority-key.mjs",
+    "checkpoint:audit": "node --experimental-strip-types scripts/checkpoint-audit.mjs",
+    "verify:audit": "node --experimental-strip-types scripts/verify-audit.mjs",
     "start": "node --experimental-strip-types apps/haa-server/src/server.ts"
   },
   "dependencies": {
