@@ -51,7 +51,19 @@ tasks:
   - {id: W7-T03, wave: W7, title: "Publishable TypeScript SDK package", depends_on: [W4-T01, W7-T01], status: DONE}
   - {id: W7-T04, wave: W7, title: "Optional WebAuthn adapter spike", depends_on: [W7-T01], status: DEFERRED_OPTIONAL}
   - {id: W7-T05, wave: W7, title: "Final cross-model security/architecture review", depends_on: [W7-T01, W7-T02, W7-T03], status: READY_FOR_EXTERNAL_REVIEW}
-  - {id: W8-T01, wave: W8, title: "DubBridge ActionProfile specification", depends_on: [W7-T01, W7-T03, W7-T05], status: FUTURE}
-  - {id: W8-T02, wave: W8, title: "DubBridge requester/executor adapter", depends_on: [W8-T01, W7-T02], status: FUTURE}
-  - {id: W8-T03, wave: W8, title: "DubBridge real end-to-end approval gate", depends_on: [W8-T02], status: FUTURE}
-  - {id: W8-T04, wave: W8, title: "DubBridge cross-system audit/failure/retry hardening", depends_on: [W8-T03], status: FUTURE}
+  - {id: W8-T01, wave: W8A, title: "DubBridge integration ADR and authority boundaries", depends_on: [W7-T05], status: FUTURE}
+  - {id: W8-T02, wave: W8A, title: "DubBridge task lifecycle and ceremony outcome semantics", depends_on: [W8-T01], status: FUTURE}
+  - {id: W8-T03, wave: W8A, title: "TaskAuthorizationManifest v1", depends_on: [W8-T01, W8-T02], status: FUTURE}
+  - {id: W8-T04, wave: W8A, title: "TaskClosureManifest v1", depends_on: [W8-T01, W8-T02, W8-T03], status: FUTURE}
+  - {id: W8-T05, wave: W8B, title: "APPROVE / REJECT / UNKNOWN outcome records and fail-closed semantics", depends_on: [W8-T02, W7-T01], status: FUTURE}
+  - {id: W8-T06, wave: W8B, title: "dubbridge.task-start.v1 ActionProfile", depends_on: [W8-T03, W8-T05], status: FUTURE}
+  - {id: W8-T07, wave: W8B, title: "dubbridge.task-close.v1 ActionProfile", depends_on: [W8-T04, W8-T05], status: FUTURE}
+  - {id: W8-T08, wave: W8B, title: "DubBridge profile and ceremony-decision security gate", depends_on: [W8-T06, W8-T07], status: FUTURE}
+  - {id: W8-T09, wave: W8C, title: "DubBridge thin HAA client and configuration adapter", depends_on: [W8-T08, W7-T02, W7-T03], status: FUTURE}
+  - {id: W8-T10, wave: W8C, title: "DubBridge Task Start Gate", depends_on: [W8-T03, W8-T06, W8-T09], status: FUTURE}
+  - {id: W8-T11, wave: W8C, title: "DubBridge Task Closure Gate", depends_on: [W8-T04, W8-T07, W8-T09, W8-T10], status: FUTURE}
+  - {id: W8-T12, wave: W8D, title: "Automated DubBridge dual-gate end-to-end validation", depends_on: [W8-T10, W8-T11], status: FUTURE}
+  - {id: W8-T13, wave: W8D, title: "Physical macOS Touch ID dual-gate validation", depends_on: [W8-T12], status: FUTURE}
+  - {id: W8-T14, wave: W8E, title: "DubBridge HAA opt-in feature flag and workflow documentation", depends_on: [W8-T13], status: FUTURE}
+  - {id: W8-T15, wave: W8E, title: "Pilot HAA task authority on one real DubBridge task", depends_on: [W8-T14], status: FUTURE}
+  - {id: W8-T16, wave: W8E, title: "DubBridge HAA adoption/default-on decision gate", depends_on: [W8-T15], status: FUTURE}
