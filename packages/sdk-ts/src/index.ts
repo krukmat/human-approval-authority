@@ -1,22 +1,32 @@
 import { createPublicKey, verify as verifyCryptoSignature } from 'node:crypto';
-import type { ActionSpec, ApprovalRequest, ApprovalState, ExecutionGrant } from '@haa/protocol';
+import type { ActionSpec, ApprovalRequest, ExecutionGrant } from '@haa/protocol';
 
 export type { ActionSpec, ApprovalRequest, ApprovalState, ExecutionGrant } from '@haa/protocol';
 
-export type CeremonyOutcome = 'APPROVE' | 'REJECT' | 'UNKNOWN';
-export type RejectionReason = 'USER_ESCAPE';
-export type UnknownCeremonyReason =
+export type CeremonyOutcome = 'APPROVE' | 'REJECT';
+export type RejectionReason =
+  | 'USER_ESCAPE'
   | 'WINDOW_CLOSED'
-  | 'LOCAL_TIMEOUT'
-  | 'APP_TERMINATED'
-  | 'INTERACTION_ERROR'
-  | 'AUTHENTICATOR_UNAVAILABLE';
+  | 'TIMEOUT'
+  | 'CHALLENGE_EXPIRED'
+  | 'INTERACTION_ERROR';
+export type RejectionAssurance = 'explicit-human-negative-action' | 'fail-closed-terminal';
 
 export interface CeremonyResult {
   outcome: CeremonyOutcome;
   requestId: string;
-  reason?: RejectionReason | UnknownCeremonyReason;
-  state?: ApprovalState;
+  reason?: RejectionReason;
+}
+
+export interface RejectionRecord {
+  outcome: 'REJECT';
+  requestId: string;
+  state: 'REJECTED';
+  challengeDigest: string;
+  reason: RejectionReason;
+  rejectedAt: string;
+  provenance: 'authenticated-approver-channel';
+  assurance: RejectionAssurance;
 }
 
 export interface RejectApprovalInput {
@@ -174,10 +184,6 @@ export function verifyExecutionGrant(input: VerifyExecutionGrantInput): Executio
   return grant;
 }
 
-export function unknownCeremonyResult(requestId: string, reason: UnknownCeremonyReason): CeremonyResult {
-  return { outcome: 'UNKNOWN', requestId, reason };
-}
-
 export class HaaApiError extends Error {
   readonly status: number;
   readonly code: string;
@@ -240,7 +246,7 @@ export class HaaClient {
     return this.call(`/v1/approval-requests/${encodeURIComponent(requestId)}`);
   }
 
-  rejectApproval(input: RejectApprovalInput): Promise<CeremonyResult> {
+  rejectApproval(input: RejectApprovalInput): Promise<RejectionRecord> {
     return this.call(`/v1/approval-requests/${encodeURIComponent(input.requestId)}/reject`, {
       method: 'POST',
       body: JSON.stringify({
