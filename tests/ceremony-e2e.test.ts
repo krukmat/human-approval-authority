@@ -8,7 +8,6 @@ import {
 import { SqliteStore } from '../packages/persistence-sqlite/src/index.ts';
 import { HaaApplication } from '../apps/haa-server/src/application.ts';
 import { buildHttpServer } from '../apps/haa-server/src/http.ts';
-import { unknownCeremonyResult } from '../packages/sdk-ts/src/index.ts';
 import type { ActionSpec, ApprovalChallengePackage } from '../packages/protocol/src/index.ts';
 
 const action: ActionSpec = {
@@ -65,7 +64,42 @@ async function requestChallenge(server: ReturnType<typeof buildHttpServer>, requ
   return { challenge, digest: challengeDigest(challenge) };
 }
 
-test('HAA-only ceremony E2E separates APPROVE, REJECT and UNKNOWN authority effects', async () => {
+async function assertRejectedWithoutGrant(
+  f: ReturnType<typeof fixture>,
+  requestId: string,
+  reason: 'USER_ESCAPE' | 'WINDOW_CLOSED' | 'TIMEOUT' | 'INTERACTION_ERROR',
+) {
+  const challenge = await requestChallenge(f.server, requestId);
+  const rejectResponse = await f.server.inject({
+    method: 'POST',
+    url: `/v1/approval-requests/${requestId}/reject`,
+    headers: { 'x-api-key': 'human-w8-secret' },
+    payload: { challengeDigest: challenge.digest, reason },
+  });
+  assert.equal(rejectResponse.statusCode, 200);
+  assert.equal(rejectResponse.json().outcome, 'REJECT');
+  assert.equal(rejectResponse.json().state, 'REJECTED');
+  assert.equal(rejectResponse.json().reason, reason);
+  assert.equal(
+    rejectResponse.json().assurance,
+    reason === 'USER_ESCAPE' ? 'explicit-human-negative-action' : 'fail-closed-terminal',
+  );
+
+  const rejectedGrant = await f.server.inject({
+    method: 'POST',
+    url: `/v1/approval-requests/${requestId}/authorize`,
+    headers: { 'x-api-key': 'executor-w8-secret' },
+    payload: {
+      executionId: `exec-${requestId}`,
+      actualAction: action,
+      actualState: { version: 'v1' },
+    },
+  });
+  assert.equal(rejectedGrant.statusCode, 409);
+  assert.equal(rejectedGrant.json().error, 'REQUEST_NOT_APPROVED:REJECTED');
+}
+
+test('HAA-only ceremony E2E allows only APPROVE to create execution authority', async () => {
   const f = fixture();
 
   const approve = await requestChallenge(f.server, 'w8-approve');
@@ -99,56 +133,17 @@ test('HAA-only ceremony E2E separates APPROVE, REJECT and UNKNOWN authority effe
   assert.equal(grantResponse.statusCode, 200);
   assert.equal(grantResponse.json().schema, 'haa.execution-grant.v1');
 
-  const reject = await requestChallenge(f.server, 'w8-reject');
-  const rejectResponse = await f.server.inject({
-    method: 'POST',
-    url: '/v1/approval-requests/w8-reject/reject',
-    headers: { 'x-api-key': 'human-w8-secret' },
-    payload: { challengeDigest: reject.digest, reason: 'USER_ESCAPE' },
-  });
-  assert.equal(rejectResponse.statusCode, 200);
-  assert.equal(rejectResponse.json().outcome, 'REJECT');
-  assert.equal(rejectResponse.json().state, 'REJECTED');
-
-  const rejectedGrant = await f.server.inject({
-    method: 'POST',
-    url: '/v1/approval-requests/w8-reject/authorize',
-    headers: { 'x-api-key': 'executor-w8-secret' },
-    payload: {
-      executionId: 'w8-exec-reject',
-      actualAction: action,
-      actualState: { version: 'v1' },
-    },
-  });
-  assert.equal(rejectedGrant.statusCode, 409);
-  assert.equal(rejectedGrant.json().error, 'REQUEST_NOT_APPROVED:REJECTED');
-
-  await requestChallenge(f.server, 'w8-unknown');
-  const unknown = unknownCeremonyResult('w8-unknown', 'LOCAL_TIMEOUT');
-  assert.deepEqual(unknown, { outcome: 'UNKNOWN', requestId: 'w8-unknown', reason: 'LOCAL_TIMEOUT' });
-
-  const unknownStatus = await f.server.inject({
-    method: 'GET',
-    url: '/v1/approval-requests/w8-unknown',
-    headers: { 'x-api-key': 'human-w8-secret' },
-  });
-  assert.equal(unknownStatus.statusCode, 200);
-  assert.equal(unknownStatus.json().state, 'PENDING');
-
-  const unknownAudit = await f.server.inject({
-    method: 'GET',
-    url: '/v1/approval-requests/w8-unknown/audit',
-    headers: { 'x-api-key': 'human-w8-secret' },
-  });
-  assert.equal(unknownAudit.statusCode, 200);
-  assert.deepEqual(unknownAudit.json().map((event: { eventType: string }) => event.eventType), ['REQUESTED', 'CHALLENGE_ISSUED']);
+  await assertRejectedWithoutGrant(f, 'w8-escape', 'USER_ESCAPE');
+  await assertRejectedWithoutGrant(f, 'w8-close', 'WINDOW_CLOSED');
+  await assertRejectedWithoutGrant(f, 'w8-timeout', 'TIMEOUT');
+  await assertRejectedWithoutGrant(f, 'w8-error', 'INTERACTION_ERROR');
 
   assert.ok(f.store.verifyAuditChain());
   await f.server.close();
   f.store.close();
 });
 
-test('actual request TTL persists EXPIRED and remains distinct from local UNKNOWN', async () => {
+test('actual request TTL remains EXPIRED lifecycle state rather than ceremony rejection', async () => {
   const f = fixture();
   const createdAt = new Date('2026-09-13T07:00:00Z');
   f.app.createApprovalRequest({
@@ -160,10 +155,6 @@ test('actual request TTL persists EXPIRED and remains distinct from local UNKNOW
     ttlMs: 1000,
     now: createdAt,
   });
-
-  const localOutcome = unknownCeremonyResult('w8-expired', 'LOCAL_TIMEOUT');
-  assert.equal(localOutcome.outcome, 'UNKNOWN');
-  assert.equal(f.store.getRequest('w8-expired')?.state, 'PENDING');
 
   assert.throws(() => f.app.issueApprovalChallenge({
     apiKey: 'human-w8-secret',
