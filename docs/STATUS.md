@@ -39,8 +39,8 @@ Current `main` validates:
 - Docker build/start/health smoke;
 - Swift package tests and app-wrapper compilation on macOS CI;
 - prior physical Secure Enclave / Touch ID / bounded-executor gate;
-- HAA-only automated APPROVE / REJECT / UNKNOWN ceremony matrix;
-- request-expiry semantics remain distinct from local UNKNOWN semantics.
+- HAA-only automated APPROVE / REJECT terminal ceremony matrix;
+- request-TTL `EXPIRED` semantics remain distinct from challenge-level terminal rejection.
 
 ## W7 engineering hardening delivered
 
@@ -92,14 +92,15 @@ Only after that review may W7-T15 be changed from `BLOCKED` to `DONE`.
 
 W8 is product-independent and does not touch any external repository.
 
-The ceremony contract is:
+The terminal ceremony contract is:
 
 ```text
 successful Touch ID   -> APPROVE
-Esc                    -> REJECT
-window close           -> UNKNOWN
-local timeout          -> UNKNOWN
-technical interruption -> UNKNOWN
+Esc                    -> REJECT / USER_ESCAPE
+window close           -> REJECT / WINDOW_CLOSED
+local timeout          -> REJECT / TIMEOUT
+challenge expiry       -> REJECT / CHALLENGE_EXPIRED
+interaction failure    -> REJECT / INTERACTION_ERROR
 real request TTL       -> EXPIRED
 ```
 
@@ -111,39 +112,41 @@ Only APPROVE can create execution authority.
 
 ### REJECT
 
-REJECT is an explicit refusal and intentionally has weaker assurance than APPROVE. Initial macOS UX uses Escape rather than requiring Touch ID.
+Every non-approved terminal ceremony is REJECT and transitions the still-valid request `PENDING -> REJECTED` through the authenticated approver channel.
 
-A rejection is accepted server-side only when an authenticated `APPROVER` principal matches the configured human, the exact challenge remains active, its HAA signature/bindings verify, and the bound authenticator still belongs to that approver.
+All rejects are challenge-bound, consume that challenge, and produce no `ApprovalEvidence`, `ApprovalReceipt` or `ExecutionGrant`.
 
-The request moves `PENDING -> REJECTED`, the exact challenge is consumed, and the request audit records `USER_ESCAPE` with provenance `authenticated-approver-channel`.
+The audit deliberately distinguishes assurance:
 
-REJECT never produces `ApprovalEvidence`, `ApprovalReceipt` or `ExecutionGrant`. The audit intentionally does not claim biometric or Secure Enclave proof for rejection.
+```text
+USER_ESCAPE
+  assurance=explicit-human-negative-action
 
-### UNKNOWN
+WINDOW_CLOSED / TIMEOUT / CHALLENGE_EXPIRED / INTERACTION_ERROR
+  assurance=fail-closed-terminal
+```
 
-UNKNOWN is a caller/local ceremony outcome, not an `ApprovalState` and not a human decision. Closing the UI, a local timeout or a technical interruption does not create a `REJECTED` audit entry and does not consume execution authority.
-
-If the request TTL is still valid, the request remains `PENDING`. A later ceremony may be attempted.
+Therefore operational REJECT does not imply that a human explicitly chose Reject unless the reason is `USER_ESCAPE`; none of the negative paths claim Touch ID or biometric proof.
 
 ### EXPIRED
 
-A local timeout is not request expiry. When an active PENDING/APPROVED request crosses its actual TTL at an authorization-sensitive operation boundary, HAA materializes `EXPIRED`, records an `EXPIRED` audit event with `reason=REQUEST_TTL`, and refuses further approval/execution authority.
+Request TTL remains a separate lifecycle condition. When an active PENDING/APPROVED request crosses its actual TTL at an authorization-sensitive operation boundary, HAA materializes `EXPIRED`, records an `EXPIRED` audit event with `reason=REQUEST_TTL`, and refuses further approval/execution authority.
 
-Challenge expiry alone does not falsely attribute a human decision and does not expire a still-valid request.
+Challenge expiry can instead terminate a still-valid ceremony as `REJECTED / CHALLENGE_EXPIRED`.
 
 ### macOS UX
 
-The trusted alert retains one positive button: `Approve with Touch ID`. A discreet `Esc: Reject` instruction provides explicit negative action. Closing the ceremony or local timeout produces UNKNOWN.
+The trusted alert retains one positive button: `Approve with Touch ID`. A discreet `Esc: Reject` instruction provides explicit negative action. Closing the window, local timeout, challenge expiry or terminal interaction failure all emit challenge-bound REJECT results with typed reasons.
 
-The existing positive stdout contract remains `haa.evidence.v1`. REJECT/UNKNOWN are emitted as challenge-bound ceremony-result JSON with distinct exit codes for the approver-side orchestration layer.
+The existing positive stdout contract remains `haa.evidence.v1`. Terminal rejection output uses a distinct non-zero exit path and never emits positive evidence.
 
 ### SDK / CLI
 
-`@haa/sdk` exposes `CeremonyResult`, `rejectApproval(...)` and `unknownCeremonyResult(...)`. The CLI exposes `reject` and `unknown` without reinterpreting UNKNOWN as REJECT.
+`@haa/sdk` exposes the two-outcome `CeremonyOutcome`, typed `RejectionReason`, `RejectionRecord` and `rejectApproval(...)`. The CLI exposes `reject` with an optional typed reason. There is no third terminal `UNKNOWN` outcome.
 
 ### Audit / E2E
 
-REJECT is represented by the existing `REJECTED` request audit event and participates in W7 tamper-evident audit protection. UNKNOWN remains outside authoritative human-decision audit. Automated HAA-only tests cover positive grant issuance, explicit rejection with no grant, UNKNOWN with PENDING state, request TTL expiry, stale/wrong challenges, replay and rejection forgery attempts.
+REJECT uses the existing `REJECTED` request state/audit event and participates in W7 tamper-evident audit protection. Automated HAA-only tests cover positive grant issuance; Escape, close, timeout and interaction-error rejection; challenge-expiry reason validation; request TTL expiry; replay; wrong challenge; and rejection forgery attempts.
 
 See:
 
@@ -156,11 +159,13 @@ See:
 `W8-T09` is deliberately not closed yet. It requires both the completed automated W8 gate and `W7-T15`, then a real provisioned Apple Silicon ceremony validation of:
 
 1. Touch ID -> APPROVE;
-2. Esc -> REJECT;
-3. window close -> UNKNOWN;
-4. timeout/interruption -> UNKNOWN;
-5. only APPROVE yields a usable `ExecutionGrant`;
-6. existing W3/W4 physical positive-path behavior remains regression-safe.
+2. Esc -> REJECT / USER_ESCAPE;
+3. window close -> REJECT / WINDOW_CLOSED;
+4. timeout -> REJECT / TIMEOUT;
+5. terminal interaction failure -> REJECT / INTERACTION_ERROR;
+6. challenge expiry -> REJECT / CHALLENGE_EXPIRED;
+7. only APPROVE yields a usable `ExecutionGrant`;
+8. existing W3/W4 physical positive-path behavior remains regression-safe.
 
 ## Scope boundaries
 
