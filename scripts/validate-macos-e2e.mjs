@@ -17,6 +17,7 @@ const baseUrl = `http://127.0.0.1:${port}`;
 const authenticatorId = `mac-validation-${Date.now()}`;
 let server;
 let serverLogs = '';
+let approver;
 
 const keys = {
   agent: 'agent-dev-secret',
@@ -91,7 +92,7 @@ try {
 
   execFileSync('swift', ['build', '-c', 'release'], { cwd: macPackage, stdio: 'inherit' });
   const binPath = execFileSync('swift', ['build', '-c', 'release', '--show-bin-path'], { cwd: macPackage, encoding: 'utf8' }).trim();
-  const approver = join(binPath, 'haa-approver');
+  approver = join(binPath, 'haa-approver');
   console.log('✓ macOS approver built');
 
   const enrollment = JSON.parse(execFileSync(approver, ['--enroll', '--authenticator-id', authenticatorId], { encoding: 'utf8' }));
@@ -169,15 +170,15 @@ try {
   const retry = await api(`/v1/approval-requests/${request.id}/authorize`, {
     method: 'POST',
     key: keys.executor,
-    body: { executionId: 'exec-success', actualAction: action, actualState: { version: 'v1' } },
+    body: { executionId: 'exec-success', actualAction: action, actualState: { version: 'executed:exec-success' } },
   });
   if (retry.signature !== grant.signature) throw new Error('Idempotent retry returned a different grant');
-  console.log('✓ Same executionId is idempotent');
+  console.log('✓ Same executionId remains idempotent after resource state changes');
 
   await expectError('second execution denied', () => api(`/v1/approval-requests/${request.id}/authorize`, {
     method: 'POST',
     key: keys.executor,
-    body: { executionId: 'exec-second', actualAction: action, actualState: { version: 'v1' } },
+    body: { executionId: 'exec-second', actualAction: action, actualState: { version: 'executed:exec-success' } },
   }), 'REQUEST_NOT_APPROVED:CONSUMED');
 
   const audit = await api(`/v1/approval-requests/${request.id}/audit`, { key: keys.agent });
@@ -190,8 +191,9 @@ try {
 
   console.log('\nPASS W3-T06: Apple Secure Enclave / Touch ID end-to-end gate\n');
 } finally {
-  if (server && server.exitCode === null) {
-    server.kill('SIGTERM');
+  if (approver) {
+    try { execFileSync(approver, ['--delete', '--authenticator-id', authenticatorId], { stdio: 'ignore' }); } catch {}
   }
+  if (server && server.exitCode === null) server.kill('SIGTERM');
   await rm(temp, { recursive: true, force: true });
 }
