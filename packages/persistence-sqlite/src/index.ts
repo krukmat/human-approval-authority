@@ -160,6 +160,11 @@ export class SqliteStore {
     return row ? JSON.parse(row.receipt_json) : null;
   }
 
+  getExecutionGrant(executionId: string): ExecutionGrant | null {
+    const row = this.db.prepare('SELECT grant_json FROM grants WHERE execution_id=?').get(executionId) as any;
+    return row ? JSON.parse(row.grant_json) : null;
+  }
+
   appendAudit(event: AuditEvent): void {
     this.db.prepare('INSERT INTO audit_events(id,request_id,event_type,actor_id,event_json,at) VALUES (?,?,?,?,?,?)').run(
       event.id, event.requestId, event.eventType, event.actorId, JSON.stringify(event), event.at,
