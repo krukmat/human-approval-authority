@@ -128,6 +128,9 @@ test('detached verifier enforces execution-grant time policy', () => {
     expectedRequestId: 'req-1', expectedExecutionId: 'exec-before-key', expectedActionDigest: 'sha256:action', expectedExecutorAudience: 'executor-a',
     now: new Date('2026-09-13T04:00:01.000Z'),
   }), /GRANT_ISSUED_BEFORE_KEY_ACTIVE/);
+
+  assert.throws(() => verifyFixture({ now: new Date('invalid') }), (error: unknown) =>
+    error instanceof HaaGrantVerificationError && error.code === 'INVALID_VERIFICATION_TIME');
 });
 
 test('detached verifier fails closed for unknown keys, algorithm mismatch, expiry and extra fields', () => {
