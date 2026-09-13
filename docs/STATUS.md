@@ -6,84 +6,89 @@
 - **W1 Universal core:** DONE
 - **W2 Service/enforcement:** DONE
 - **W3 Apple authenticator:** DONE and physically validated on a real Apple Silicon Mac with Touch ID / Secure Enclave
-- **W4 Agent integration:** DONE; `npm run validate:agent-macos` passed the real MCP requester → human Touch ID → bounded executor scenario
-- **W4-T06 Value Gate:** PASS; a future hardware POC is authorized but not required for the software product
-- **W5 Hardware POC:** DEFERRED by current product priority
+- **W4 Agent integration:** DONE; real MCP requester → human Touch ID → bounded executor scenario validated
+- **W5 Hardware POC:** DEFERRED by product priority
 - **W6 Hardware hardening:** BLOCKED until W5 is deliberately resumed
-- **W7-T01 Protocol/version compatibility freeze:** DONE
-- **W7-T02 Docker/self-host package:** DONE
-- **W7-T03 Publishable TypeScript SDK package:** DONE
+- **W7-T01..T03 Productization baseline:** DONE
 - **W7-T04 WebAuthn spike:** DEFERRED_OPTIONAL
-- **W7-T05 Final independent/cross-model security review:** READY_FOR_EXTERNAL_REVIEW; first-party review completed and blocking findings fixed
-- **W7-T06..T15 Software production hardening:** ACTIVE / PLANNED
-- **W8 Universal ceremony outcomes:** ACTIVE ROADMAP / HAA-ONLY
-- **Product integrations:** PARKED; not part of the active roadmap
+- **W7-T05 Final independent/cross-model security review:** READY_FOR_EXTERNAL_REVIEW
+- **W7-T06 Runtime schemas/bounds:** DONE
+- **W7-T07 Deterministic dependency/build chain:** DONE
+- **W7-T08 Client credential lifecycle/roles:** DONE
+- **W7-T09 Authority key ring/rotation:** DONE
+- **W7-T10 Network edge production profile:** DONE
+- **W7-T11 Audit tamper-evidence:** DONE
+- **W7-T12 Authenticator assurance model:** DONE
+- **W7-T13 Detached ExecutionGrant verification:** DONE
+- **W7-T14 Backup/recovery contract:** DONE
+- **W7-T15 Software production-readiness gate:** BLOCKED only by W7-T05
+- **W8 Universal ceremony outcomes:** HAA-ONLY future work
+- **Product integrations:** PARKED
 
-The canonical active plan is `docs/HAA-ACTIVE-ROADMAP.md` and the machine-readable dependency graph is `tasks/manifest.yaml`.
+The canonical task/dependency source is `tasks/manifest.yaml`. The active roadmap is `docs/HAA-ACTIVE-ROADMAP.md`.
 
 ## Current quality gates
 
-The current software surface is validated by CI and the physical Mac gate:
+Current `main` validates:
 
-- TypeScript runtime security tests pass.
-- Production TypeScript sources pass strict `tsc --noEmit`.
-- `@haa/protocol` v1 and `@haa/sdk` build to JS/declarations and pass `npm pack --dry-run`.
-- Docker image builds, starts and passes a live `/health` smoke test.
-- MCP stdio exposes only `request_approval` and `approval_status`.
-- Exact-action binding, stale-precondition rejection, replay rejection, atomic single use and post-mutation idempotent retry are covered.
-- External executor remains blocked before approval and mutates its resource only after obtaining `ExecutionGrant`.
-- Swift package tests and the app-like Xcode wrapper compile on a macOS CI runner.
-- Real provisioned macOS execution passed Secure Enclave enrollment, trusted display, Touch ID evidence verification and bounded execution.
+- committed npm lockfile v3;
+- `npm ci` in CI and `npm ci --omit=dev` in Docker;
+- publishable `@haa/protocol` and `@haa/sdk` package builds / `npm pack --dry-run`;
+- all TypeScript tests, including security/adversarial cases;
+- strict `tsc --noEmit`;
+- Docker build/start/health smoke;
+- Swift package tests and app-wrapper compilation on macOS CI;
+- prior physical Secure Enclave / Touch ID / bounded-executor gate.
 
-## W7 software productization delivered
+## W7 engineering hardening delivered
 
-### Protocol v1
+### Runtime boundary
 
-`docs/PROTOCOL-V1.md` freezes the v1 authorization-bearing schemas and defines strict compatibility rules. Product-specific growth happens through versioned ActionProfiles and adapters rather than mutation of signed v1 primitives.
+HTTP input is validated before domain execution using strict, bounded runtime schemas. Request body size, identifiers, strings, JSON depth/key/array counts, action/evidence shapes and unknown fields fail closed.
 
-### Self-host
+### Deterministic build chain
 
-The repository includes:
+`package-lock.json` is committed. CI and Docker resolve the committed dependency graph through `npm ci`. See `docs/BUILD-REPRODUCIBILITY.md`.
 
-- `Dockerfile` based on Node 24;
-- `docker-compose.yml` with separate persistent SQLite and authority-key volumes;
-- container healthcheck;
-- loopback-only host binding by default;
-- `scripts/provision-client.mjs` for non-dev client provisioning with high-entropy keys;
-- `docs/SELF-HOSTING.md`.
+### Client identity and credential lifecycle
 
-`HAA_DEV_BOOTSTRAP` remains development-only and is not required for the self-host path.
+HAA clients have explicit `REQUESTER`, `APPROVER` and `EXECUTOR` roles. Credentials support expiry, rotation, disable/revoke, non-secret version history and administrative lifecycle audit. API keys are stored only as hashes. See `docs/SELF-HOSTING.md`.
 
-### SDK
+### Authority key lifecycle
 
-`@haa/sdk` has a compiled package boundary, generated declarations, exported public input types and `HaaApiError`. It depends on the frozen `@haa/protocol` v1 package rather than private monorepo source paths.
+The authority uses one ACTIVE signing key and retains RETIRED public keys for historical verification. New signatures use only the ACTIVE key; old challenges/artifacts can still be verified by `authorityKeyId`. Rotation has a CLI and fail-closed recovery rules. See `docs/SELF-HOSTING.md`.
 
-## Security review findings fixed
+### Network edge
 
-The first-party W7 review found and fixed three integration-blocking gaps:
+`local` profile requires loopback. `edge` explicitly permits non-loopback binding only behind an operator-controlled TLS/rate-limit/network edge. Forwarded headers are not identity inputs. See `docs/NETWORK-EDGE.md`.
 
-1. requester identity could nominate itself as approver → now rejected with `SELF_APPROVAL_FORBIDDEN`;
-2. software-only `test-key` verifier was enabled by default → now test-only through explicit injection;
-3. any authenticated client could read unrelated request/audit metadata → now limited to request participants.
+### Tamper-evident audit
 
-`docs/SECURITY-REVIEW-V1.md` also records the residual production-hardening work now promoted into W7-T06..T15:
+Protocol request audit events are protected by a transactional hash chain. Signed `haa.audit-checkpoint.v1` checkpoints anchor the chain against a DBA recomputing hashes after modification. Offline verification is available through `npm run verify:audit`. See `docs/AUDIT-INTEGRITY.md`.
 
-- runtime request schemas / bounds;
-- deterministic dependency/build chain;
-- client credential lifecycle and role separation;
-- authority key rotation;
-- network edge controls;
-- audit tamper-evidence;
-- authenticator assurance model;
-- detached `ExecutionGrant` verification;
-- SQLite backup/recovery and explicit single-node boundary;
-- final software production-readiness gate.
+The current cryptographic chain covers `audit_events`; administrative credential lifecycle events remain a separate operational audit stream and are not represented as request-audit checkpoint evidence.
 
-## W8 universal ceremony outcomes
+### Authenticator assurance
 
-W8 is now HAA-only and product-independent.
+HAA distinguishes enrollment trust, enrolled-key possession, user verification, device-bound user verification and hardware attestation. Apple Secure Enclave-backed signing is not described as platform attestation because HAA v1 does not prove that property.
 
-Target ceremony semantics:
+### Detached ExecutionGrant verification
+
+The public TypeScript SDK can verify an `ExecutionGrant` received through an untrusted intermediary against ACTIVE/RETIRED authority public keys, exact request/action/execution/audience bindings and expiry. Invalid shape/signature/key/algorithm/binding fails closed.
+
+### Backup and recovery
+
+HAA remains an explicit single-node/single-writer SQLite product. Backup bundles contain a transactional SQLite snapshot, authority private key, authority key ring and a manifest binding file checksums, active key ID and audit head. Backup verification and restore re-check authority/audit consistency. See `docs/BACKUP-RECOVERY.md`.
+
+## Remaining W7 gate
+
+Engineering hardening T06-T14 is complete. W7 cannot be declared production-ready until **W7-T05** receives an actually independent/cross-model review with findings classified as BLOCKING / P1 / P2 / ACCEPTED-RISK and no blocking finding remains.
+
+Only after that review may W7-T15 be changed from `BLOCKED` to `DONE`.
+
+## W8 boundary
+
+W8 remains HAA-only and product-independent. Its target ceremony semantics are:
 
 ```text
 successful Touch ID   -> APPROVE
@@ -93,21 +98,8 @@ local timeout          -> UNKNOWN
 technical interruption -> UNKNOWN
 ```
 
-Compatibility rule:
+`UNKNOWN` is not added to frozen `ApprovalState`; only verified APPROVE evidence may result in `ApprovalReceipt` / `ExecutionGrant`.
 
-- `REJECTED` and `EXPIRED` already exist in frozen protocol v1;
-- `UNKNOWN` is **not** added to `ApprovalState`;
-- UNKNOWN is an indeterminate ceremony result exposed to the caller/app;
-- if the request remains valid it may remain `PENDING`;
-- true request/challenge expiry continues to use `EXPIRED`;
-- only verified APPROVE evidence may result in `ApprovalReceipt` / `ExecutionGrant`.
+## Scope boundaries
 
-Before implementing Esc-as-REJECT, W8 explicitly requires a negative-decision provenance/threat-model task so an agent/requester cannot forge a claim that the human explicitly rejected something.
-
-## Hardware boundary
-
-Hardware is not blocked by architecture; it is deliberately deferred. Do not continue W5/W6 unless product priority explicitly returns to the dedicated terminal POC.
-
-## Product-integration boundary
-
-No external product repository is part of the active plan. Existing product-integration design notes may remain in the repository as parked future material, but they do not define current task dependencies and must not drive HAA core decisions.
+Hardware remains deliberately deferred. No external product repository is part of the active HAA roadmap, and parked integration notes do not define HAA core dependencies.
