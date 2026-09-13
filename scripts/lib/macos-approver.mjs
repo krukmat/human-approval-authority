@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createPublicKey } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -20,6 +21,26 @@ function resolveDeveloperDir() {
   throw new Error(
     'Full Xcode is required for the macOS Secure Enclave gate. Install/open Xcode once, sign in under Xcode > Settings > Apple Accounts, select a Team for the HAAApprover target, then rerun. Command Line Tools alone cannot create the provisioning profile required by the Data Protection Keychain.',
   );
+}
+
+export function validateMacApproverEnrollment(enrollment) {
+  if (!enrollment || typeof enrollment !== 'object') throw new Error('macOS enrollment did not return an object');
+  if (enrollment.type !== 'apple-secure-enclave') throw new Error(`Unexpected macOS authenticator type: ${enrollment.type}`);
+  if (enrollment.signatureAlgorithm !== 'ES256') throw new Error(`Unexpected macOS signature algorithm: ${enrollment.signatureAlgorithm}`);
+  if (typeof enrollment.publicKeyPem !== 'string' || !enrollment.publicKeyPem.includes('BEGIN PUBLIC KEY')) {
+    throw new Error('macOS enrollment did not return a PEM public key');
+  }
+
+  let key;
+  try {
+    key = createPublicKey(enrollment.publicKeyPem);
+  } catch (error) {
+    throw new Error(`Node/OpenSSL could not decode the Secure Enclave public key PEM: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  }
+  if (key.asymmetricKeyType !== 'ec') throw new Error(`Expected EC public key, got ${key.asymmetricKeyType ?? 'unknown'}`);
+  const curve = key.asymmetricKeyDetails?.namedCurve;
+  if (curve && curve !== 'prime256v1') throw new Error(`Expected P-256/prime256v1 public key, got ${curve}`);
+  return enrollment;
 }
 
 export function buildProvisionedMacApprover({ repoRoot, buildRoot }) {
