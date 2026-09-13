@@ -21,18 +21,18 @@
 - **W7-T12 Authenticator assurance model:** DONE
 - **W7-T13 Detached ExecutionGrant verification:** DONE, hardened after W7-T05 finding
 - **W7-T14 Backup/recovery contract:** DONE
-- **W7-T15 Software production-readiness gate:** READY — awaiting final CI on post-review P2 follow-up
+- **W7-T15 Software production-readiness gate:** DONE — accepted code SHA `7720ac04e5b35637dcc56952925af15386cdc226`
 - **W8-T01..T08 Universal ceremony outcomes:** DONE / HAA-ONLY
-- **W8-T09 Physical macOS ceremony compatibility gate:** BLOCKED by W7-T15
+- **W8-T09 Physical macOS ceremony compatibility gate:** READY
 - **Product integrations:** PARKED
 
 The canonical task/dependency source is `tasks/manifest.yaml`. The active roadmap is `docs/HAA-ACTIVE-ROADMAP.md`.
 
-The independent W7-T05 review and rerun are recorded in `docs/W7-T05-REVIEW-2026-09-13.md`.
+The independent W7-T05 review and rerun are recorded in `docs/W7-T05-REVIEW-2026-09-13.md`; W7-T15 closure evidence is in `docs/W7-PRODUCTION-READINESS.md`.
 
 ## Current quality gates
 
-Current `main` validates:
+The accepted W7 code baseline validates:
 
 - committed npm lockfile v3;
 - `npm ci` in CI and `npm ci --omit=dev` in Docker;
@@ -40,6 +40,7 @@ Current `main` validates:
 - TypeScript security/adversarial tests and strict `tsc --noEmit`;
 - Docker build/start/health smoke;
 - Swift package tests and app-wrapper compilation on macOS CI;
+- CodeQL JavaScript/TypeScript analysis;
 - prior physical Secure Enclave / Touch ID / bounded-executor gate;
 - HAA-only automated APPROVE / REJECT terminal ceremony matrix;
 - request-TTL `EXPIRED` semantics remain distinct from challenge-level terminal rejection.
@@ -78,7 +79,7 @@ HAA distinguishes enrollment trust, enrolled-key possession, user verification, 
 
 ### Detached ExecutionGrant verification
 
-The public TypeScript SDK verifies an `ExecutionGrant` received through an untrusted intermediary against the trusted ACTIVE authority public key metadata, exact request/action/execution/audience bindings, strict time policy and expiry. Invalid shape/signature/key/algorithm/binding/time fails closed. The post-review follow-up additionally rejects an invalid local verification clock with `INVALID_VERIFICATION_TIME`.
+The public TypeScript SDK verifies an `ExecutionGrant` received through an untrusted intermediary against trusted ACTIVE authority public-key metadata, exact request/action/execution/audience bindings, strict time policy and expiry. Invalid shape/signature/key/algorithm/binding/time fails closed. The post-review follow-up rejects an invalid local verification clock with `INVALID_VERIFICATION_TIME`.
 
 ### Backup and recovery
 
@@ -97,9 +98,9 @@ W7-T05 verdict:              PASS_WITH_FOLLOWUPS
 W7-T15 recommendation:       PROCEED
 ```
 
-The rerun's only new finding was P2 `HAA-REV-007` (invalid verifier `Date` could yield `NaN`). It has been remediated with fail-closed `INVALID_VERIFICATION_TIME` handling and a regression test.
+The rerun's only new finding was P2 `HAA-REV-007` (invalid verifier `Date` could yield `NaN`). It was remediated with fail-closed `INVALID_VERIFICATION_TIME` handling and regression coverage. During that follow-up an accidental private source-path import temporarily broke SDK packaging; CI detected it, the publishable `@haa/protocol` boundary was restored, and the corrected accepted SHA passed pack, tests, strict TypeScript, Docker, Swift/Xcode and CodeQL gates.
 
-W7-T15 is therefore unblocked architecturally and waits only for the final automated gate on the post-follow-up SHA.
+W7-T15 is closed. Residual risks remain the explicitly documented audit-checkpoint boundary, trusted provisioning/no platform-attestation boundary, and operator-managed edge controls.
 
 ## W8 HAA-only ceremony semantics delivered
 
@@ -167,15 +168,15 @@ See:
 - `docs/W8-NEGATIVE-DECISION-THREAT-MODEL.md`
 - `docs/W8-CEREMONY-AUDIT.md`
 
-## Remaining W8 gate
+## Active W8 gate
 
-`W8-T09` is deliberately not closed yet. It requires both the completed automated W8 gate and `W7-T15`, then a real provisioned Apple Silicon ceremony validation of:
+`W8-T09` is now READY. It requires a real provisioned Apple Silicon ceremony validation of:
 
 1. Touch ID -> APPROVE;
 2. Esc -> REJECT / USER_ESCAPE;
 3. window close -> REJECT / WINDOW_CLOSED;
 4. timeout -> REJECT / TIMEOUT;
-5. terminal interaction failure -> REJECT / INTERACTION_ERROR;
+5. terminal interaction failure -> REJECT / INTERACTION_ERROR (may remain automated/N/A if forcing it would require deliberately breaking the local trust environment);
 6. challenge expiry -> REJECT / CHALLENGE_EXPIRED;
 7. only APPROVE yields a usable `ExecutionGrant`;
 8. existing W3/W4 physical positive-path behavior remains regression-safe.
