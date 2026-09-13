@@ -11,7 +11,7 @@
 - **W6 Hardware hardening:** BLOCKED until W5 is deliberately resumed
 - **W7-T01..T03 Productization baseline:** DONE
 - **W7-T04 WebAuthn spike:** DEFERRED_OPTIONAL
-- **W7-T05 Final independent/cross-model security review:** READY_FOR_EXTERNAL_REVIEW
+- **W7-T05 Final independent/cross-model security review:** AWAITING_EXTERNAL_RERUN after initial FAIL and remediation
 - **W7-T06 Runtime schemas/bounds:** DONE
 - **W7-T07 Deterministic dependency/build chain:** DONE
 - **W7-T08 Client credential lifecycle/roles:** DONE
@@ -19,14 +19,16 @@
 - **W7-T10 Network edge production profile:** DONE
 - **W7-T11 Audit tamper-evidence:** DONE
 - **W7-T12 Authenticator assurance model:** DONE
-- **W7-T13 Detached ExecutionGrant verification:** DONE
+- **W7-T13 Detached ExecutionGrant verification:** DONE, hardened after W7-T05 finding
 - **W7-T14 Backup/recovery contract:** DONE
-- **W7-T15 Software production-readiness gate:** BLOCKED only by W7-T05
+- **W7-T15 Software production-readiness gate:** BLOCKED only by W7-T05 rerun
 - **W8-T01..T08 Universal ceremony outcomes:** DONE / HAA-ONLY
 - **W8-T09 Physical macOS ceremony compatibility gate:** BLOCKED by W7-T15
 - **Product integrations:** PARKED
 
 The canonical task/dependency source is `tasks/manifest.yaml`. The active roadmap is `docs/HAA-ACTIVE-ROADMAP.md`.
+
+The first independent W7-T05 review is recorded in `docs/W7-T05-REVIEW-2026-09-13.md`.
 
 ## Current quality gates
 
@@ -34,6 +36,8 @@ Current `main` validates:
 
 - committed npm lockfile v3;
 - `npm ci` in CI and `npm ci --omit=dev` in Docker;
+- production dependency audit;
+- CodeQL JavaScript/TypeScript analysis;
 - publishable `@haa/protocol` and `@haa/sdk` package builds / `npm pack --dry-run`;
 - TypeScript security/adversarial tests and strict `tsc --noEmit`;
 - Docker build/start/health smoke;
@@ -48,6 +52,8 @@ Current `main` validates:
 
 HTTP input is validated before domain execution using strict, bounded runtime schemas. Request body size, identifiers, strings, JSON depth/key/array counts, action/evidence shapes and unknown fields fail closed.
 
+Built-in `ActionProfile`s also enforce semantic allowlists. Unknown payload/precondition fields are rejected by the core profile boundary, not merely the HTTP layer. Accepted authorization-significant fields are displayed or explicitly constrained by the profile.
+
 ### Deterministic build chain
 
 `package-lock.json` is committed. CI and Docker resolve the committed dependency graph through `npm ci`. See `docs/BUILD-REPRODUCIBILITY.md`.
@@ -56,37 +62,83 @@ HTTP input is validated before domain execution using strict, bounded runtime sc
 
 HAA clients have explicit `REQUESTER`, `APPROVER` and `EXECUTOR` roles. Credentials support expiry, rotation, disable/revoke, non-secret version history and administrative lifecycle audit. API keys are stored only as hashes. See `docs/SELF-HOSTING.md`.
 
+### Authenticator revocation and outstanding approval authority
+
+An approval receipt remains historical evidence that valid approval occurred, but an unconsumed approval does not survive authenticator revocation. `authorizeAndConsume(...)` re-resolves the receipt's authenticator and requires it to remain `ACTIVE` before minting a new grant.
+
+If the authenticator has been revoked or removed, HAA materializes:
+
+```text
+APPROVED -> REVOKED
+```
+
+records a `REVOKED` audit event with `reason=AUTHENTICATOR_REVOKED`, and denies execution authority.
+
+Already-consumed execution keeps the existing idempotent retry contract.
+
 ### Authority key lifecycle
 
-The authority uses one ACTIVE signing key and retains RETIRED public keys for historical verification. New signatures use only the ACTIVE key; old challenges/artifacts can still be verified by `authorityKeyId`. Rotation has a CLI and fail-closed recovery rules. See `docs/SELF-HOSTING.md`.
+The authority uses one ACTIVE signing key and retains RETIRED public keys for historical verification. New signatures use only the ACTIVE key; old signed historical artifacts remain attributable by `authorityKeyId`. Rotation has a CLI and fail-closed recovery rules. See `docs/SELF-HOSTING.md`.
+
+For **live detached `ExecutionGrant` verification**, the rule is intentionally stricter:
+
+```text
+ACTIVE key  -> eligible for live grant verification
+RETIRED key -> historical verification only; never live execution authority
+```
+
+The SDK also validates grant timestamp ordering, bounded TTL, future issuance and key-created-at boundaries. This closes W7-T05 finding HAA-REV-001.
 
 ### Network edge
 
-`local` profile requires loopback. `edge` explicitly permits non-loopback binding only behind an operator-controlled TLS/rate-limit/network edge. Forwarded headers are not identity inputs. See `docs/NETWORK-EDGE.md`.
+`local` profile requires loopback. `edge` explicitly permits non-loopback binding only behind an operator-controlled TLS/rate-limit/network edge. Forwarded headers are not identity inputs.
+
+Development bootstrap is now fail-closed in `edge` mode. `HAA_DEV_BOOTSTRAP=1` with `HAA_NETWORK_PROFILE=edge` refuses startup unless the operator additionally sets the explicitly unsafe `HAA_ALLOW_UNSAFE_DEV_BOOTSTRAP_EDGE=1` override. See `docs/NETWORK-EDGE.md`.
 
 ### Tamper-evident audit
 
 Protocol request audit events are protected by a transactional hash chain. Signed `haa.audit-checkpoint.v1` checkpoints anchor the chain against a DBA recomputing hashes after modification. Offline verification is available through `npm run verify:audit`. See `docs/AUDIT-INTEGRITY.md`.
 
-The current cryptographic chain covers `audit_events`; administrative credential lifecycle events remain a separate operational audit stream and are not represented as request-audit checkpoint evidence.
+The current cryptographic chain covers `audit_events`; administrative credential lifecycle events remain a separate operational audit stream and are not represented as request-audit checkpoint evidence. The uncheckpointed tail / admin-audit boundary remains an explicitly accepted risk from W7-T05.
 
 ### Authenticator assurance
 
-HAA distinguishes enrollment trust, enrolled-key possession, user verification, device-bound user verification and hardware attestation. Apple Secure Enclave-backed signing is not described as platform attestation because HAA v1 does not prove that property.
+HAA distinguishes enrollment trust, enrolled-key possession, user verification, device-bound user verification and hardware attestation. Apple Secure Enclave-backed signing is not described as platform attestation because HAA v1 does not prove that property. Trusted provisioning and lack of platform attestation remain explicitly accepted W7-T05 risks.
 
 ### Detached ExecutionGrant verification
 
-The public TypeScript SDK can verify an `ExecutionGrant` received through an untrusted intermediary against ACTIVE/RETIRED authority public keys, exact request/action/execution/audience bindings and expiry. Invalid shape/signature/key/algorithm/binding fails closed.
+The public TypeScript SDK can verify an `ExecutionGrant` received through an untrusted intermediary against the ACTIVE authority public key, exact request/action/execution/audience bindings, time ordering, bounded TTL and expiry. Invalid shape/signature/key/status/algorithm/time/binding fails closed.
+
+RETIRED authority keys are retained for historical cryptographic verification, not live grant authority.
 
 ### Backup and recovery
 
 HAA remains an explicit single-node/single-writer SQLite product. Backup bundles contain a transactional SQLite snapshot, authority private key, authority key ring and a manifest binding file checksums, active key ID and audit head. Backup verification and restore re-check authority/audit consistency. See `docs/BACKUP-RECOVERY.md`.
 
-## Remaining W7 gate
+## W7-T05 independent review state
 
-Engineering hardening T06-T14 is complete. W7 cannot be declared production-ready until **W7-T05** receives an actually independent/cross-model review with findings classified as BLOCKING / P1 / P2 / ACCEPTED-RISK and no blocking finding remains.
+The first independent Codex review of commit `9bc3f9ec110c141b1a92ef30c9a55948bf77fa79` returned:
 
-Only after that review may W7-T15 be changed from `BLOCKED` to `DONE`.
+```text
+BLOCKING      1
+P1            1
+P2            1
+ACCEPTED-RISK 3
+verdict       FAIL
+```
+
+The implementation has since remediated:
+
+- HAA-REV-001 — retired authority key could mint fresh detached grants;
+- HAA-REV-002 — authenticator revocation did not invalidate an APPROVED/unconsumed request;
+- HAA-REV-003 — built-in profiles accepted signed-but-undisplayed fields;
+- HAA-REV-006 bootstrap portion — predictable dev bootstrap is now rejected in edge profile by default.
+
+HAA-REV-004 and HAA-REV-005 remain explicitly accepted trust-boundary risks. The residual external-ingress portion of HAA-REV-006 remains documented and accepted.
+
+W7-T05 is **not DONE** until an independent reviewer re-checks the remediation delta and returns `BLOCKING = 0`.
+
+Only after that result may W7-T15 be changed from `BLOCKED` to `DONE`.
 
 ## W8 HAA-only ceremony semantics delivered
 
@@ -104,49 +156,7 @@ interaction failure    -> REJECT / INTERACTION_ERROR
 real request TTL       -> EXPIRED
 ```
 
-### APPROVE
-
-APPROVE preserves the existing strong path: trusted signed display → Touch ID → Secure Enclave-backed evidence → verified `ApprovalEvidence` → `ApprovalReceipt` → bounded `authorizeAndConsume(...)` → `ExecutionGrant`.
-
-Only APPROVE can create execution authority.
-
-### REJECT
-
-Every non-approved terminal ceremony is REJECT and transitions the still-valid request `PENDING -> REJECTED` through the authenticated approver channel.
-
-All rejects are challenge-bound, consume that challenge, and produce no `ApprovalEvidence`, `ApprovalReceipt` or `ExecutionGrant`.
-
-The audit deliberately distinguishes assurance:
-
-```text
-USER_ESCAPE
-  assurance=explicit-human-negative-action
-
-WINDOW_CLOSED / TIMEOUT / CHALLENGE_EXPIRED / INTERACTION_ERROR
-  assurance=fail-closed-terminal
-```
-
-Therefore operational REJECT does not imply that a human explicitly chose Reject unless the reason is `USER_ESCAPE`; none of the negative paths claim Touch ID or biometric proof.
-
-### EXPIRED
-
-Request TTL remains a separate lifecycle condition. When an active PENDING/APPROVED request crosses its actual TTL at an authorization-sensitive operation boundary, HAA materializes `EXPIRED`, records an `EXPIRED` audit event with `reason=REQUEST_TTL`, and refuses further approval/execution authority.
-
-Challenge expiry can instead terminate a still-valid ceremony as `REJECTED / CHALLENGE_EXPIRED`.
-
-### macOS UX
-
-The trusted alert retains one positive button: `Approve with Touch ID`. A discreet `Esc: Reject` instruction provides explicit negative action. Closing the window, local timeout, challenge expiry or terminal interaction failure all emit challenge-bound REJECT results with typed reasons.
-
-The existing positive stdout contract remains `haa.evidence.v1`. Terminal rejection output uses a distinct non-zero exit path and never emits positive evidence.
-
-### SDK / CLI
-
-`@haa/sdk` exposes the two-outcome `CeremonyOutcome`, typed `RejectionReason`, `RejectionRecord` and `rejectApproval(...)`. The CLI exposes `reject` with an optional typed reason. There is no third terminal `UNKNOWN` outcome.
-
-### Audit / E2E
-
-REJECT uses the existing `REJECTED` request state/audit event and participates in W7 tamper-evident audit protection. Automated HAA-only tests cover positive grant issuance; Escape, close, timeout and interaction-error rejection; challenge-expiry reason validation; request TTL expiry; replay; wrong challenge; and rejection forgery attempts.
+Only APPROVE can create positive authorization evidence and an `ExecutionGrant`. Negative terminal outcomes remain challenge-bound and fail closed, with audit assurance distinguishing explicit `USER_ESCAPE` from non-affirmative terminal failures.
 
 See:
 
@@ -156,16 +166,7 @@ See:
 
 ## Remaining W8 gate
 
-`W8-T09` is deliberately not closed yet. It requires both the completed automated W8 gate and `W7-T15`, then a real provisioned Apple Silicon ceremony validation of:
-
-1. Touch ID -> APPROVE;
-2. Esc -> REJECT / USER_ESCAPE;
-3. window close -> REJECT / WINDOW_CLOSED;
-4. timeout -> REJECT / TIMEOUT;
-5. terminal interaction failure -> REJECT / INTERACTION_ERROR;
-6. challenge expiry -> REJECT / CHALLENGE_EXPIRED;
-7. only APPROVE yields a usable `ExecutionGrant`;
-8. existing W3/W4 physical positive-path behavior remains regression-safe.
+`W8-T09` is deliberately not closed yet. It requires W7-T15, then the real provisioned Apple Silicon ceremony matrix defined in `docs/W8-PHYSICAL-CEREMONY-GATE.md`.
 
 ## Scope boundaries
 
