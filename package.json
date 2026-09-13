@@ -14,7 +14,9 @@
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:core": "node --experimental-strip-types --test tests/core.test.ts",
     "test:service": "node --experimental-strip-types --test tests/service.test.ts",
+    "test:mcp": "node --experimental-strip-types --test tests/mcp.test.ts",
     "check": "npm run test && npx tsc --noEmit",
+    "validate:macos": "node scripts/validate-macos-e2e.mjs",
     "start": "node --experimental-strip-types apps/haa-server/src/server.ts"
   },
   "dependencies": {
