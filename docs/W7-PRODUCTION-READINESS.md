@@ -1,28 +1,31 @@
 # W7-T15 software production-readiness gate
 
-Status: **BLOCKED BY W7-T05**
+Status: **PASS / DONE**
 
 This checklist is the closure contract for W7-T15. It is HAA-only and deliberately does not depend on DubBridge, hardware, WebAuthn or any product integration.
 
-W7-T15 may move to DONE only after an independent W7-T05 review has no BLOCKING findings and the evidence below is green on the accepted commit.
-
 ## Gate identity
 
-Record at closure:
-
 ```text
-Accepted commit SHA:
-W7-T05 reviewed SHA:
-W7-T05 verdict:
-Readiness date:
-Operator/reviewer:
+Accepted code SHA: 7720ac04e5b35637dcc56952925af15386cdc226
+W7-T05 independent rerun SHA: 7d3f7126f67e660147f7e0a9967c07deafa1564b
+W7-T05 verdict: PASS_WITH_FOLLOWUPS
+Readiness date: 2026-09-13
+Reviewer: Codex (GPT-5), OpenAI Codex
+Closure: HAA roadmap owner / automated gates
 ```
 
-If the accepted SHA differs from the reviewed SHA, list every security-relevant delta and its review evidence. A large or architectural delta requires a fresh W7-T05 review.
+The accepted code SHA differs from the independent rerun SHA only by the bounded post-review P2 follow-up `HAA-REV-007` and its packaging-boundary correction:
+
+- reject non-finite verifier clocks with `INVALID_VERIFICATION_TIME`;
+- regression coverage for `new Date('invalid')`;
+- preserve the public SDK boundary through `@haa/protocol` and SDK-local canonicalization.
+
+This delta is narrow, non-architectural, covered by regression tests and the full automated gate. It does not alter signed protocol-v1 schemas or authority boundaries.
 
 ## G1 — Build / package / test chain
 
-Required:
+Required and passed on the accepted code SHA:
 
 ```bash
 npm ci
@@ -40,29 +43,17 @@ Evidence:
 - strict type-check passes;
 - no known high/critical production dependency advisory at gate time.
 
-Result: `PENDING W7-T05 FINAL SHA`
+Result: `PASS`
 
 ## G2 — Container / self-host baseline
 
-Required:
+CI container build/start/health smoke passed on the accepted code SHA. Development bootstrap in `edge` mode requires the explicit unsafe override used only by the CI smoke; production edge bootstrap fails closed by default.
 
-```bash
-docker build -t haa-readiness .
-docker run -d --name haa-readiness-run \
-  -p 127.0.0.1:8787:8787 \
-  -e HAA_DEV_BOOTSTRAP=1 \
-  haa-readiness
-curl -fsS http://127.0.0.1:8787/health
-docker rm -f haa-readiness-run
-```
-
-Verify local profile remains loopback-safe and production edge assumptions remain documented in `docs/NETWORK-EDGE.md`.
-
-Result: `PENDING W7-T05 FINAL SHA`
+Result: `PASS`
 
 ## G3 — Client credential lifecycle
 
-Evidence must prove:
+Evidence proves:
 
 - role separation REQUESTER / APPROVER / EXECUTOR;
 - API keys persisted only as hashes;
@@ -71,77 +62,57 @@ Evidence must prove:
 - disable/revoke works without deleting identity history;
 - lifecycle actions are operationally auditable.
 
-Primary evidence: client lifecycle tests + `docs/SELF-HOSTING.md`.
-
-Result: `IMPLEMENTED / REVERIFY ON FINAL SHA`
+Result: `PASS`
 
 ## G4 — Authority key lifecycle
 
-Evidence must prove:
+Evidence proves:
 
 - exactly one ACTIVE signing key;
 - RETIRED public keys remain usable for legitimate historical verification;
 - new signatures use only ACTIVE key;
+- live detached `ExecutionGrant` verification accepts only ACTIVE key status;
 - unknown/mismatched algorithms fail closed;
-- challenge issued before rotation remains verifiable under retained key policy;
+- challenge issued before rotation remains verifiable under retained historical-key policy;
 - rotation/recovery behavior is documented.
 
-Primary evidence: authority-keyring tests + self-hosting/recovery docs.
-
-Result: `IMPLEMENTED / REVERIFY ON FINAL SHA`
+Result: `PASS`
 
 ## G5 — Audit integrity
 
-Evidence must prove:
+Evidence proves deterministic hash chaining, mutation/removal/reordering detection, signed checkpoints and offline verification. The documented residual boundary remains that an uncheckpointed tail and the separate administrative audit stream are not protected to the same external-anchor level.
 
-- deterministic event digest/hash chain;
-- mutation is detected;
-- removal/reordering is detected;
-- signed checkpoint detects a DBA recomputing the local chain after tampering;
-- offline verification path works;
-- threat boundary does not claim protection after compromise of the checkpoint-signing authority.
-
-Primary evidence: audit integrity tests + `docs/AUDIT-INTEGRITY.md`.
-
-Result: `IMPLEMENTED / REVERIFY ON FINAL SHA`
+Result: `PASS / ACCEPTED-RISK HAA-REV-004`
 
 ## G6 — Backup / restore
 
-Evidence must prove:
+Evidence proves transactional SQLite snapshot, authority-key/key-ring consistency, checksums, active-key binding, audit-head verification, tampered-bundle rejection and guarded restore behavior.
 
-- transactional SQLite snapshot;
-- authority private key/key ring bundled consistently;
-- checksums and active key ID verified;
-- audit head consistency verified;
-- tampered bundle rejected;
-- accidental overwrite refused unless explicit;
-- restored instance does not silently invalidate authority references.
-
-Primary evidence: backup/recovery tests + `docs/BACKUP-RECOVERY.md`.
-
-Result: `IMPLEMENTED / REVERIFY ON FINAL SHA`
+Result: `PASS`
 
 ## G7 — Detached execution grant verification
 
-Evidence must prove strict verification of:
+Evidence proves strict verification of:
 
 - schema/shape;
-- authority key ID and algorithm;
+- ACTIVE authority key ID/status and algorithm;
 - authority signature;
 - request ID;
 - optional exact execution ID;
 - action digest;
 - executor audience;
+- valid verification clock;
+- issuedAt/expiresAt ordering;
+- future issuance and key-created-at boundaries;
+- maximum TTL policy;
 - expiry;
 - unknown key and extra-field fail-closed behavior.
 
-Primary evidence: detached grant tests + public `@haa/sdk` API.
-
-Result: `IMPLEMENTED / REVERIFY ON FINAL SHA`
+Result: `PASS`
 
 ## G8 — Authenticator assurance
 
-Documentation and code must distinguish:
+Documentation and code distinguish:
 
 ```text
 authenticated enrollment
@@ -151,13 +122,13 @@ device-bound user verification
 hardware/platform attestation
 ```
 
-HAA v1 must not claim Apple platform attestation when it only proves the documented enrollment + Secure Enclave-backed signing behavior.
+HAA v1 does not claim Apple platform attestation. Trusted provisioning/enrollment remains an explicit administrative boundary.
 
-Result: `IMPLEMENTED / REVERIFY ON FINAL SHA`
+Result: `PASS / ACCEPTED-RISK HAA-REV-005`
 
 ## G9 — W8 ceremony authority boundary
 
-Automated evidence must prove:
+Automated evidence proves:
 
 ```text
 successful positive evidence -> APPROVE -> receipt/grant possible
@@ -169,41 +140,65 @@ INTERACTION_ERROR            -> REJECTED -> no receipt/grant
 request TTL                  -> EXPIRED  -> no receipt/grant
 ```
 
-Reason/assurance must prevent close/timeout/error from being described as biometric or explicit human rejection.
+Reason/assurance prevents close/timeout/error from being described as biometric or explicit human rejection.
 
-Result: `IMPLEMENTED / REVERIFY ON FINAL SHA`
+Result: `PASS`
 
 ## G10 — Independent review
 
-Required artifact: completed `docs/W7-INDEPENDENT-REVIEW-PACKET.md` output from an independent reviewer/model.
-
-Closure rule:
+Independent Codex/GPT-5 rerun result:
 
 ```text
-BLOCKING = 0
+Remaining BLOCKING findings: 0
+Remaining P1 findings:       0
+New BLOCKING findings:       0
+New P1 findings:             0
+W7-T05 verdict:              PASS_WITH_FOLLOWUPS
+W7-T15 recommendation:       PROCEED
 ```
 
-P1/P2 may remain only if their disposition is explicit and does not contradict the W7-T15 acceptance criteria. Accepted risks must be bounded and documented.
+The only new rerun finding, `HAA-REV-007` (`P2` invalid verifier clock), was remediated and regression-tested before this gate was closed.
 
-Result: `BLOCKED — W7-T05 PENDING`
+Result: `PASS`
+
+## Automated closure evidence
+
+Accepted code SHA `7720ac04e5b35637dcc56952925af15386cdc226` passed:
+
+```text
+npm ci / production audit       PASS
+package build / pack:check      PASS
+npm test                        PASS
+strict TypeScript               PASS
+Docker build + health smoke     PASS
+Swift package tests             PASS
+Xcode approver wrapper compile  PASS
+CodeQL JavaScript/TypeScript    PASS
+```
+
+## Residual accepted risks
+
+- `HAA-REV-004`: signed audit checkpoints anchor only checkpointed history; administrative audit is a separate stream.
+- `HAA-REV-005`: trusted provisioning/enrollment and no platform-attestation claim.
+- `HAA-REV-006`: edge deployments depend on operator-controlled TLS, ACLs, rate limiting and secret isolation; unsafe development bootstrap requires an explicit override.
+
+These are documented trust/deployment boundaries, not hidden execution-authority bypasses.
 
 ## Final closure statement
 
-Use only after every gate is reconciled:
-
 ```text
 W7-T15: PASS
-Accepted SHA: <sha>
-Independent review: PASS, BLOCKING=0
+Accepted code SHA: 7720ac04e5b35637dcc56952925af15386cdc226
+Independent review: PASS_WITH_FOLLOWUPS, BLOCKING=0, P1=0
 CI/package/Docker: PASS
+CodeQL: PASS
 Credential lifecycle: PASS
 Authority rotation: PASS
-Audit integrity: PASS
+Audit integrity: PASS with documented residual boundary
 Backup/restore: PASS
 Detached grants: PASS
-Authenticator assurance: PASS
+Authenticator assurance: PASS with documented trust boundary
 W8 automated authority boundary: PASS
-Residual risks: <references>
 ```
 
-Until that statement is supportable by evidence, `tasks/manifest.yaml` must keep W7-T15 as `BLOCKED`.
+W7 software production hardening is closed. The next active HAA-only gate is W8-T09, the physical macOS ceremony/compatibility validation.
