@@ -18,7 +18,11 @@ final class ModelsTests: XCTestCase {
     }
 
     func testRejectOutputIsExplicitAndChallengeBound() throws {
-        let result = CeremonyResultOutput.reject(requestId: "req-1", challengeDigest: "sha256:abc")
+        let result = CeremonyResultOutput.reject(
+            requestId: "req-1",
+            challengeDigest: "sha256:abc",
+            reason: .userEscape
+        )
         let data = try JSONEncoder().encode(result)
         let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: String])
         XCTAssertEqual(json["outcome"], "REJECT")
@@ -27,12 +31,32 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(json["challengeDigest"], "sha256:abc")
     }
 
-    func testUnknownOutputDoesNotPretendHumanRejection() throws {
-        let result = CeremonyResultOutput.unknown(requestId: "req-2", challengeDigest: "sha256:def", reason: .localTimeout)
-        let data = try JSONEncoder().encode(result)
-        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: String])
-        XCTAssertEqual(json["outcome"], "UNKNOWN")
-        XCTAssertEqual(json["reason"], "LOCAL_TIMEOUT")
-        XCTAssertEqual(json["requestId"], "req-2")
+    func testEveryTerminalFailureOutputIsReject() throws {
+        let reasons: [RejectionReason] = [
+            .windowClosed,
+            .timeout,
+            .challengeExpired,
+            .interactionError
+        ]
+
+        for reason in reasons {
+            let result = CeremonyResultOutput.reject(
+                requestId: "req-terminal",
+                challengeDigest: "sha256:def",
+                reason: reason
+            )
+            let data = try JSONEncoder().encode(result)
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: String])
+            XCTAssertEqual(json["outcome"], "REJECT")
+            XCTAssertEqual(json["reason"], reason.rawValue)
+            XCTAssertEqual(json["requestId"], "req-terminal")
+            XCTAssertEqual(json["challengeDigest"], "sha256:def")
+        }
+    }
+
+    func testISO8601ParserAcceptsNodeFractionalAndStandardTimestamps() throws {
+        XCTAssertNotNil(parseISO8601("2026-09-13T07:00:00.000Z"))
+        XCTAssertNotNil(parseISO8601("2026-09-13T07:00:00Z"))
+        XCTAssertNil(parseISO8601("not-a-date"))
     }
 }
