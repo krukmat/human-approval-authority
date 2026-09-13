@@ -4,9 +4,10 @@ import AppKit
 #endif
 
 #if os(macOS)
+@MainActor
 func askForApproval(_ payload: ChallengePayload) -> Bool {
     NSApplication.shared.setActivationPolicy(.accessory)
-    NSApplication.shared.activate(ignoringOtherApps: true)
+    NSApplication.shared.activate()
     let alert = NSAlert()
     alert.alertStyle = .critical
     alert.messageText = "Human Approval Authority"
