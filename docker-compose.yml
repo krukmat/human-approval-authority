@@ -1,0 +1,21 @@
+services:
+  haa:
+    build:
+      context: .
+    image: human-approval-authority:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HAA_PORT:-8787}:8787"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      HAA_DB_PATH: /data/haa.db
+      HAA_AUTHORITY_KEY_FILE: /keys/authority-key.pem
+      HAA_AUTHORITY_KEY_ID: ${HAA_AUTHORITY_KEY_ID:-self-host-authority-v1}
+    volumes:
+      - haa-data:/data
+      - haa-keys:/keys
+
+volumes:
+  haa-data:
+  haa-keys:
