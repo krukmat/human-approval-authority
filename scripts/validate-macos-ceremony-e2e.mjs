@@ -184,7 +184,7 @@ try {
   await writeFile(challengePath, JSON.stringify(challenge, null, 2), 'utf8');
 
   if (testCase === 'escape') console.log('\nPress Esc in the HAA ceremony window.\n');
-  if (testCase === 'window-close') console.log('\nClose the HAA ceremony window using its standard close control.\n');
+  if (testCase === 'window-close') console.log('\nPress Command-W in the HAA ceremony window (or use the standard close control if available).\n');
   if (testCase === 'approve') console.log('\nApprove the exact displayed action with Touch ID.\n');
   if (testCase === 'challenge-expired') await waitUntil(challengePayload(challenge).expiresAt);
 
