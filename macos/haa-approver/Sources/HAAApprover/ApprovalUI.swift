@@ -4,6 +4,19 @@ import AppKit
 #endif
 
 #if os(macOS)
+private final class CeremonyWindowDelegate: NSObject, NSWindowDelegate {
+    private let onClose: () -> Void
+
+    init(onClose: @escaping () -> Void) {
+        self.onClose = onClose
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        onClose()
+        return true
+    }
+}
+
 @MainActor
 func askForApproval(_ payload: ChallengePayload, timeoutSeconds: TimeInterval? = nil) -> CeremonyDecision {
     NSApplication.shared.setActivationPolicy(.accessory)
@@ -19,6 +32,14 @@ func askForApproval(_ payload: ChallengePayload, timeoutSeconds: TimeInterval? =
     alert.addButton(withTitle: "Approve with Touch ID")
 
     var rejectionReason: RejectionReason?
+    let closeDelegate = CeremonyWindowDelegate {
+        guard rejectionReason == nil else { return }
+        rejectionReason = .windowClosed
+        NSApp.abortModal()
+    }
+    alert.window.delegate = closeDelegate
+    alert.window.standardWindowButton(.closeButton)?.isEnabled = true
+
     let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
         if event.keyCode == 53 { // Escape
             rejectionReason = .userEscape
