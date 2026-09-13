@@ -11,6 +11,7 @@ services:
       PORT: 8787
       HAA_DB_PATH: /data/haa.db
       HAA_AUTHORITY_KEY_FILE: /keys/authority-key.pem
+      HAA_AUTHORITY_KEYRING_FILE: /keys/authority-keyring.json
       HAA_AUTHORITY_KEY_ID: ${HAA_AUTHORITY_KEY_ID:-self-host-authority-v1}
     volumes:
       - haa-data:/data
