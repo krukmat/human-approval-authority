@@ -9,3 +9,5 @@ dist/
 .build/
 
 .haa/
+haa-github-sync-patch.zip
+haa-sync-patch/apply.sh
