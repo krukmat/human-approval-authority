@@ -59,6 +59,9 @@ export interface AuthorityVerificationKey {
   retiredAt?: string;
 }
 
+export const DEFAULT_MAX_EXECUTION_GRANT_TTL_MS = 30_000;
+export const DEFAULT_EXECUTION_GRANT_CLOCK_SKEW_MS = 5_000;
+
 export interface VerifyExecutionGrantInput {
   grant: ExecutionGrant;
   authorityKeys: AuthorityVerificationKey[];
@@ -67,6 +70,8 @@ export interface VerifyExecutionGrantInput {
   expectedExecutorAudience: string;
   expectedExecutionId?: string;
   now?: Date;
+  maxTtlMs?: number;
+  clockSkewMs?: number;
 }
 
 export type GrantVerificationErrorCode =
@@ -74,8 +79,14 @@ export type GrantVerificationErrorCode =
   | 'UNSUPPORTED_GRANT_SCHEMA'
   | 'UNSUPPORTED_SIGNATURE_ALGORITHM'
   | 'UNKNOWN_AUTHORITY_KEY'
+  | 'AUTHORITY_KEY_NOT_ACTIVE'
+  | 'AUTHORITY_KEY_METADATA_INVALID'
   | 'AUTHORITY_ALGORITHM_MISMATCH'
   | 'INVALID_GRANT_SIGNATURE'
+  | 'GRANT_INVALID_TIME_RANGE'
+  | 'GRANT_ISSUED_IN_FUTURE'
+  | 'GRANT_ISSUED_BEFORE_KEY_ACTIVE'
+  | 'GRANT_TTL_EXCEEDS_POLICY'
   | 'GRANT_EXPIRED'
   | 'REQUEST_ID_MISMATCH'
   | 'EXECUTION_ID_MISMATCH'
@@ -150,7 +161,29 @@ export function verifyExecutionGrant(input: VerifyExecutionGrantInput): Executio
 
   const authorityKey = input.authorityKeys.find((key) => key.keyId === grant.authorityKeyId);
   if (!authorityKey) throw new HaaGrantVerificationError('UNKNOWN_AUTHORITY_KEY');
+  if (authorityKey.status !== 'ACTIVE') throw new HaaGrantVerificationError('AUTHORITY_KEY_NOT_ACTIVE');
   if (authorityKey.algorithm !== grant.signatureAlgorithm) throw new HaaGrantVerificationError('AUTHORITY_ALGORITHM_MISMATCH');
+
+  const issuedAt = Date.parse(grant.issuedAt);
+  const expiresAt = Date.parse(grant.expiresAt);
+  if (!Number.isFinite(issuedAt) || !Number.isFinite(expiresAt) || expiresAt <= issuedAt) {
+    throw new HaaGrantVerificationError('GRANT_INVALID_TIME_RANGE');
+  }
+  const now = (input.now ?? new Date()).getTime();
+  const clockSkewMs = input.clockSkewMs ?? DEFAULT_EXECUTION_GRANT_CLOCK_SKEW_MS;
+  const maxTtlMs = input.maxTtlMs ?? DEFAULT_MAX_EXECUTION_GRANT_TTL_MS;
+  if (!Number.isFinite(clockSkewMs) || clockSkewMs < 0 || !Number.isFinite(maxTtlMs) || maxTtlMs <= 0) {
+    throw new HaaGrantVerificationError('INVALID_GRANT_SHAPE');
+  }
+  if (issuedAt > now + clockSkewMs) throw new HaaGrantVerificationError('GRANT_ISSUED_IN_FUTURE');
+  if (expiresAt - issuedAt > maxTtlMs) throw new HaaGrantVerificationError('GRANT_TTL_EXCEEDS_POLICY');
+  if (expiresAt <= now) throw new HaaGrantVerificationError('GRANT_EXPIRED');
+
+  if (authorityKey.createdAt !== undefined) {
+    const keyCreatedAt = Date.parse(authorityKey.createdAt);
+    if (!Number.isFinite(keyCreatedAt)) throw new HaaGrantVerificationError('AUTHORITY_KEY_METADATA_INVALID');
+    if (issuedAt + clockSkewMs < keyCreatedAt) throw new HaaGrantVerificationError('GRANT_ISSUED_BEFORE_KEY_ACTIVE');
+  }
 
   const unsigned = {
     schema: grant.schema,
@@ -177,10 +210,6 @@ export function verifyExecutionGrant(input: VerifyExecutionGrantInput): Executio
   }
   if (grant.actionDigest !== input.expectedActionDigest) throw new HaaGrantVerificationError('ACTION_DIGEST_MISMATCH');
   if (grant.executorAudience !== input.expectedExecutorAudience) throw new HaaGrantVerificationError('EXECUTOR_AUDIENCE_MISMATCH');
-
-  const expiresAt = Date.parse(grant.expiresAt);
-  if (!Number.isFinite(expiresAt)) throw new HaaGrantVerificationError('INVALID_GRANT_SHAPE');
-  if (expiresAt <= (input.now ?? new Date()).getTime()) throw new HaaGrantVerificationError('GRANT_EXPIRED');
   return grant;
 }
 
