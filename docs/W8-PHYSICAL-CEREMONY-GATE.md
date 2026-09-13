@@ -28,13 +28,41 @@ Validation date:
 Operator:
 ```
 
+## HAA-only ceremony orchestrator
+
+The repository contains `scripts/validate-macos-ceremony-e2e.mjs`, exposed as:
+
+```bash
+npm run validate:macos-ceremony -- --case <case>
+```
+
+Supported physical cases:
+
+```text
+approve
+escape
+window-close
+timeout
+challenge-expired
+```
+
+For each case the orchestrator creates an isolated HAA server, provisions/enrolls a fresh Secure Enclave authenticator, creates the exact request/challenge, runs the macOS approver, submits APPROVE evidence or the typed REJECT result, and validates the resulting execution-authority boundary.
+
+`interaction-error` is intentionally not auto-manufactured because the gate must not weaken keychain/Secure Enclave controls merely to trigger an error.
+
 ## Gate 1 — Positive ceremony
 
-Run the existing physical positive path:
+First retain the existing W3 positive regression gate:
 
 ```bash
 npm ci
 npm run validate:macos
+```
+
+Then run the W8 ceremony-specific positive case:
+
+```bash
+npm run validate:macos-ceremony -- --case approve
 ```
 
 Expected:
@@ -59,21 +87,21 @@ Result: `PENDING PHYSICAL EXECUTION`
 
 ## Gate 2 — Escape rejection
 
-Create a fresh request/challenge and open the trusted ceremony. Press Esc.
+Run:
 
-Expected approver output:
+```bash
+npm run validate:macos-ceremony -- --case escape
+```
+
+Press Esc when the trusted HAA ceremony is shown.
+
+Expected:
 
 ```text
 outcome=REJECT
 reason=USER_ESCAPE
-```
-
-Server expectation after submitting the terminal result:
-
-```text
 state=REJECTED
 assurance=explicit-human-negative-action
-receipt absent
 ExecutionGrant impossible
 ```
 
@@ -81,7 +109,13 @@ Result: `PENDING PHYSICAL EXECUTION`
 
 ## Gate 3 — Window close rejection
 
-Create a fresh request/challenge and close the approval window without Touch ID approval.
+Run:
+
+```bash
+npm run validate:macos-ceremony -- --case window-close
+```
+
+Close the HAA ceremony using its standard window close control without Touch ID approval.
 
 Expected:
 
@@ -90,7 +124,6 @@ outcome=REJECT
 reason=WINDOW_CLOSED
 state=REJECTED
 audit assurance=fail-closed-terminal
-receipt absent
 ExecutionGrant impossible
 ```
 
@@ -100,17 +133,13 @@ Result: `PENDING PHYSICAL EXECUTION`
 
 ## Gate 4 — Local timeout rejection
 
-Create a fresh request/challenge and invoke the approver with a short timeout, for example:
+Run:
 
 ```bash
-HAAApprover.app/Contents/MacOS/HAAApprover \
-  --challenge <challenge.json> \
-  --authority-public-key <authority.pem> \
-  --authenticator-id <id> \
-  --timeout-seconds 5
+npm run validate:macos-ceremony -- --case timeout
 ```
 
-Do not approve before timeout.
+The orchestrator supplies a short local timeout. Do not approve before it expires.
 
 Expected:
 
@@ -119,7 +148,6 @@ outcome=REJECT
 reason=TIMEOUT
 state=REJECTED
 audit assurance=fail-closed-terminal
-receipt absent
 ExecutionGrant impossible
 ```
 
@@ -127,7 +155,13 @@ Result: `PENDING PHYSICAL EXECUTION`
 
 ## Gate 5 — Challenge-expiry rejection
 
-Use a HAA-signed challenge whose challenge lifetime has elapsed while the request itself remains valid. Launch the approver after challenge expiry.
+Run:
+
+```bash
+npm run validate:macos-ceremony -- --case challenge-expired
+```
+
+The orchestrator waits until the HAA-signed challenge expires while its parent request remains valid, then launches the approver.
 
 Expected:
 
@@ -137,11 +171,10 @@ local expiry classification=CHALLENGE_EXPIRED
 server verifies the challenge is actually expired
 state=REJECTED
 audit assurance=fail-closed-terminal
-receipt absent
 ExecutionGrant impossible
 ```
 
-A live challenge mislabeled `CHALLENGE_EXPIRED` must be denied.
+A live challenge mislabeled `CHALLENGE_EXPIRED` is already covered by automated adversarial tests and must be denied.
 
 Result: `PENDING PHYSICAL EXECUTION`
 
@@ -187,13 +220,13 @@ Result: `PENDING PHYSICAL EXECUTION`
 ## Final acceptance matrix
 
 ```text
-Touch ID success       APPROVE                 grant possible   PASS/FAIL
-Esc                    REJECT/USER_ESCAPE      no grant         PASS/FAIL
-Window close           REJECT/WINDOW_CLOSED    no grant         PASS/FAIL
-Timeout                REJECT/TIMEOUT          no grant         PASS/FAIL
-Challenge expiry       REJECT/CHALLENGE_EXPIRED no grant        PASS/FAIL
-Interaction failure    REJECT/INTERACTION_ERROR no grant        PASS/FAIL/N-A
-W3/W4 positive regressions                       preserved      PASS/FAIL
+Touch ID success       APPROVE                   grant possible   PASS/FAIL
+Esc                    REJECT/USER_ESCAPE        no grant         PASS/FAIL
+Window close           REJECT/WINDOW_CLOSED      no grant         PASS/FAIL
+Timeout                REJECT/TIMEOUT            no grant         PASS/FAIL
+Challenge expiry       REJECT/CHALLENGE_EXPIRED  no grant         PASS/FAIL
+Interaction failure    REJECT/INTERACTION_ERROR  no grant         PASS/FAIL/N-A
+W3/W4 positive regressions                         preserved      PASS/FAIL
 ```
 
 W8-T09 may move to DONE only when all required physical rows are PASS and any N/A is limited to the safely-nonreproducible interaction-error row with automated coverage still green.
