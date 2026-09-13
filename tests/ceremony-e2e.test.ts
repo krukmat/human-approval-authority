@@ -68,7 +68,6 @@ async function requestChallenge(server: ReturnType<typeof buildHttpServer>, requ
 test('HAA-only ceremony E2E separates APPROVE, REJECT and UNKNOWN authority effects', async () => {
   const f = fixture();
 
-  // APPROVE: verified positive evidence may produce a grant.
   const approve = await requestChallenge(f.server, 'w8-approve');
   const evidenceResponse = await f.server.inject({
     method: 'POST',
@@ -100,7 +99,6 @@ test('HAA-only ceremony E2E separates APPROVE, REJECT and UNKNOWN authority effe
   assert.equal(grantResponse.statusCode, 200);
   assert.equal(grantResponse.json().schema, 'haa.execution-grant.v1');
 
-  // REJECT: explicit authenticated refusal is terminal and cannot grant execution.
   const reject = await requestChallenge(f.server, 'w8-reject');
   const rejectResponse = await f.server.inject({
     method: 'POST',
@@ -125,7 +123,6 @@ test('HAA-only ceremony E2E separates APPROVE, REJECT and UNKNOWN authority effe
   assert.equal(rejectedGrant.statusCode, 409);
   assert.equal(rejectedGrant.json().error, 'REQUEST_NOT_APPROVED:REJECTED');
 
-  // UNKNOWN: no server-side human decision is asserted; request stays pending.
   await requestChallenge(f.server, 'w8-unknown');
   const unknown = unknownCeremonyResult('w8-unknown', 'LOCAL_TIMEOUT');
   assert.deepEqual(unknown, { outcome: 'UNKNOWN', requestId: 'w8-unknown', reason: 'LOCAL_TIMEOUT' });
@@ -168,8 +165,14 @@ test('actual request TTL persists EXPIRED and remains distinct from local UNKNOW
   assert.equal(localOutcome.outcome, 'UNKNOWN');
   assert.equal(f.store.getRequest('w8-expired')?.state, 'PENDING');
 
-  const expired = f.app.getRequest('human-w8-secret', 'w8-expired', new Date(createdAt.getTime() + 2000));
-  assert.equal(expired.state, 'EXPIRED');
+  assert.throws(() => f.app.issueApprovalChallenge({
+    apiKey: 'human-w8-secret',
+    requestId: 'w8-expired',
+    authenticatorId: 'auth-w8',
+    now: new Date(createdAt.getTime() + 2000),
+  }), /REQUEST_EXPIRED/);
+
+  assert.equal(f.store.getRequest('w8-expired')?.state, 'EXPIRED');
   assert.deepEqual(f.app.listAudit('human-w8-secret', 'w8-expired').map((event) => event.eventType), ['REQUESTED', 'EXPIRED']);
   assert.equal(f.app.listAudit('human-w8-secret', 'w8-expired').at(-1)?.details?.reason, 'REQUEST_TTL');
 
