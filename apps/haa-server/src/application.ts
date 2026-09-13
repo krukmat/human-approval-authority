@@ -151,9 +151,9 @@ export class HaaApplication {
     return request;
   }
 
-  getRequest(apiKey: string, requestId: string, now = new Date()): ApprovalRequest {
+  getRequest(apiKey: string, requestId: string): ApprovalRequest {
     const actor = this.authenticate(apiKey);
-    const request = this.refreshRequestExpiry(this.mustRequest(requestId), now);
+    const request = this.mustRequest(requestId);
     this.assertParticipant(actor, request);
     return request;
   }
@@ -161,8 +161,10 @@ export class HaaApplication {
   issueApprovalChallenge(args: { apiKey: string; requestId: string; authenticatorId: string; now?: Date }) {
     const actor = this.authenticateAs(args.apiKey, 'APPROVER');
     const now = args.now ?? new Date();
-    const request = this.refreshRequestExpiry(this.mustRequest(args.requestId), now);
+    let request = this.mustRequest(args.requestId);
     if (actor !== request.intent.approverPrincipalId) throw new Error('FORBIDDEN');
+    if (request.state !== 'PENDING') throw new Error(`REQUEST_NOT_PENDING:${request.state}`);
+    request = this.refreshRequestExpiry(request, now);
     if (request.state === 'EXPIRED') throw new Error('REQUEST_EXPIRED');
     const auth = this.store.getAuthenticator(args.authenticatorId);
     if (!auth || auth.status !== 'ACTIVE') throw new Error('AUTHENTICATOR_NOT_ACTIVE');
@@ -184,10 +186,11 @@ export class HaaApplication {
   }): RejectionResult {
     const actor = this.authenticateAs(args.apiKey, 'APPROVER');
     const now = args.now ?? new Date();
-    const request = this.refreshRequestExpiry(this.mustRequest(args.requestId), now);
+    let request = this.mustRequest(args.requestId);
     if (actor !== request.intent.approverPrincipalId) throw new Error('FORBIDDEN');
-    if (request.state === 'EXPIRED') throw new Error('REQUEST_EXPIRED');
     if (request.state !== 'PENDING') throw new Error(`REQUEST_NOT_PENDING:${request.state}`);
+    request = this.refreshRequestExpiry(request, now);
+    if (request.state === 'EXPIRED') throw new Error('REQUEST_EXPIRED');
     if (args.reason !== 'USER_ESCAPE') throw new Error('UNSUPPORTED_REJECTION_REASON');
 
     const storedChallenge = this.store.getChallenge(args.challengeDigest);
@@ -232,10 +235,11 @@ export class HaaApplication {
   submitEvidence(args: { apiKey: string; evidence: ApprovalEvidence; now?: Date }) {
     const actor = this.authenticateAs(args.apiKey, 'APPROVER');
     const now = args.now ?? new Date();
-    const request = this.refreshRequestExpiry(this.mustRequest(args.evidence.requestId), now);
+    let request = this.mustRequest(args.evidence.requestId);
     if (actor !== request.intent.approverPrincipalId) throw new Error('FORBIDDEN');
-    if (request.state === 'EXPIRED') throw new Error('REQUEST_EXPIRED');
     if (request.state !== 'PENDING') throw new Error(`REQUEST_NOT_PENDING:${request.state}`);
+    request = this.refreshRequestExpiry(request, now);
+    if (request.state === 'EXPIRED') throw new Error('REQUEST_EXPIRED');
     const storedChallenge = this.store.getChallenge(args.evidence.challengeDigest);
     if (!storedChallenge || storedChallenge.consumed) throw new Error('CHALLENGE_NOT_ACTIVE');
     const challenge = storedChallenge.challenge;
@@ -302,7 +306,7 @@ export class HaaApplication {
       return priorGrant;
     }
 
-    request = this.refreshRequestExpiry(request, now);
+    if (request.state === 'APPROVED') request = this.refreshRequestExpiry(request, now);
     if (request.state === 'EXPIRED') throw new Error('APPROVAL_EXPIRED');
     if (request.state !== 'APPROVED') throw new Error(`REQUEST_NOT_APPROVED:${request.state}`);
     this.profiles.validatePreconditions(args.actualAction, args.actualState);
