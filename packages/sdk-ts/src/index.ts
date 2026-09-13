@@ -1,7 +1,13 @@
 import type { ActionSpec, ApprovalRequest, ExecutionGrant } from '../../protocol/src/index.ts';
 
 export class HaaClient {
-  constructor(readonly baseUrl: string, readonly apiKey: string) {}
+  readonly baseUrl: string;
+  readonly apiKey: string;
+
+  constructor(baseUrl: string, apiKey: string) {
+    this.baseUrl = baseUrl;
+    this.apiKey = apiKey;
+  }
 
   private async call<T>(path: string, init: RequestInit = {}): Promise<T> {
     const response = await fetch(new URL(path, this.baseUrl), {
@@ -27,7 +33,11 @@ export class HaaClient {
   authorize(input: { requestId: string; executionId: string; actualAction: ActionSpec; actualState?: Record<string, unknown> }): Promise<ExecutionGrant> {
     return this.call(`/v1/approval-requests/${encodeURIComponent(input.requestId)}/authorize`, {
       method: 'POST',
-      body: JSON.stringify({ executionId: input.executionId, actualAction: input.actualAction, actualState: input.actualState }),
+      body: JSON.stringify({
+        executionId: input.executionId,
+        actualAction: input.actualAction,
+        ...(input.actualState ? { actualState: input.actualState } : {}),
+      }),
     });
   }
 }
