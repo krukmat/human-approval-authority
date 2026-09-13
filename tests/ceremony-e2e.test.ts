@@ -148,7 +148,7 @@ test('HAA-only ceremony E2E separates APPROVE, REJECT and UNKNOWN authority effe
   f.store.close();
 });
 
-test('actual request TTL persists EXPIRED and remains distinct from local UNKNOWN', () => {
+test('actual request TTL persists EXPIRED and remains distinct from local UNKNOWN', async () => {
   const f = fixture();
   const createdAt = new Date('2026-09-13T07:00:00Z');
   f.app.createApprovalRequest({
