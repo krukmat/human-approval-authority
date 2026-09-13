@@ -209,6 +209,7 @@ export class HaaApplication {
       return priorGrant;
     }
 
+    if (request.state !== 'APPROVED') throw new Error(`REQUEST_NOT_APPROVED:${request.state}`);
     if (new Date(request.intent.expiresAt).getTime() <= (args.now ?? new Date()).getTime()) throw new Error('APPROVAL_EXPIRED');
     this.profiles.validatePreconditions(args.actualAction, args.actualState);
 
