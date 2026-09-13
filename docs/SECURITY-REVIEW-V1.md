@@ -1,135 +1,153 @@
 # HAA v1 software security / architecture review
 
-Review date: **2026-09-13**
+Initial review date: **2026-09-13**
 
-Decision: **PASS for internal pilot and product-integration work; NOT production-hardening complete**.
+Current decision: **engineering hardening complete through W7-T14; independent/cross-model review still required before W7 production-readiness can close**.
 
-An independent cross-model review remains recommended before a production release. This review records the current first-party findings and the code changes made before that independent pass.
+This document records the first-party findings and their remediation. It is not the independent review required by W7-T05.
 
 ## Blocking findings found and resolved
 
-### S1 — Requester could nominate itself as approver
+### S1 — Requester could nominate itself as approver — RESOLVED
 
 Risk: the product thesis requires a human authority distinct from the requesting agent identity.
 
 Resolution:
-- `createApprovalRequest` now rejects `requesterId === approverPrincipalId` with `SELF_APPROVAL_FORBIDDEN`;
+- `createApprovalRequest` rejects `requesterId === approverPrincipalId` with `SELF_APPROVAL_FORBIDDEN`;
 - HTTP maps the policy violation to 403;
 - regression coverage locks the behavior.
 
-Important boundary: HAA still relies on trusted out-of-band client provisioning. An operator must not give the agent a second credential representing a human principal.
+Boundary: HAA still relies on trusted provisioning. An operator must not give an agent a second credential representing a human approver principal.
 
-### S2 — Software-only `test-key` verifier was enabled by default
-
-Risk: a production instance could accept generic software-signed evidence with the same application defaults used by tests.
+### S2 — Software-only `test-key` verifier was enabled by default — RESOLVED
 
 Resolution:
-- production defaults now include only supported product authenticator types;
-- `test-key` is injected explicitly by unit/integration tests;
-- regression coverage verifies it is absent from default verifiers.
+- production defaults contain only supported product authenticator types;
+- `test-key` is test-only through explicit injection;
+- regression coverage verifies it is absent from defaults.
 
-### S3 — Any authenticated client could read any request/audit trail
-
-Risk: metadata disclosure across unrelated clients/tenants.
+### S3 — Any authenticated client could read unrelated request/audit metadata — RESOLVED
 
 Resolution:
-- `getRequest` and `listAudit` now require the authenticated actor to be one of the request participants: requester, approver principal or executor audience;
+- request/audit reads require requester, approver principal or executor audience participation;
 - outsider access is regression-tested.
 
 ## Existing controls reconfirmed
 
-- exact canonical action digest binding;
+- canonical exact-action digest binding;
 - signed challenge payload bytes with nonce/expiry;
-- trusted display claims derived from signed typed intent;
+- trusted display claims from signed typed intent;
 - ACTIVE authenticator/principal binding;
+- requester/approver separation;
 - executor audience binding;
 - precondition/TOCTOU validation;
 - atomic approval consumption;
 - same-execution-id idempotency after resource mutation;
 - different execution ID denied after consumption;
-- ApprovalReceipt is audit evidence, not execution authority;
-- physical Apple Secure Enclave / Touch ID end-to-end gate passed;
+- ApprovalReceipt is audit evidence, never execution authority;
+- physical Apple Secure Enclave / Touch ID gate passed;
 - MCP exposes request/status only, not generic execution;
-- self-host image starts with persistent SQLite/authority-key paths and no default production credentials;
-- protocol and SDK packages build and pass `npm pack --dry-run`.
+- self-host package has persistent DB/authority-key paths and no default production credentials;
+- protocol and SDK packages build and package independently.
 
-## Residual hardening before production
+## Production-hardening follow-up
 
-These do not block an internal pilot but should remain explicit roadmap items.
+The original review identified the following residuals. They are now mapped to completed W7 tasks.
 
-### P1 — Client credential lifecycle / roles
+### P1 — Client credential lifecycle / roles — RESOLVED BY W7-T08
 
-Current client records are identity + API-key hash + enabled flag. There is no first-class role model, expiry, rotation history, administrative disable CLI/API or audit of credential lifecycle.
+Delivered:
+- explicit `REQUESTER` / `APPROVER` / `EXECUTOR` roles;
+- role enforcement at sensitive application boundaries;
+- credential expiry, rotation and disable/revoke;
+- credential-version history without plaintext secret storage;
+- administrative lifecycle audit;
+- provisioning/rotation/disable CLI and documentation.
 
-Recommendation: introduce administrative client lifecycle tooling before multi-team production use. Keep requester/approver/executor separation explicit and auditable.
+### P1 — Authority key rotation — RESOLVED BY W7-T09
 
-### P1 — Authority key rotation
+Delivered:
+- one ACTIVE authority signing key;
+- RETIRED public verification keys;
+- `authorityKeyId` resolution;
+- controlled rotation CLI and persisted key-ring metadata;
+- historical challenge/artifact verification across rotation;
+- fail-closed key/ring mismatch behavior and recovery runbook.
 
-A persistent authority key exists, but there is no key ring / overlap period / rotation protocol for previously issued receipts and grants.
+### P1 — Authenticator assurance / attestation — RESOLVED BY W7-T12
 
-Recommendation: define key IDs, active/retired verification keys and a controlled rotation runbook before production.
+HAA now explicitly distinguishes enrollment trust, key possession, user verification, device-bound user verification and hardware attestation. HAA v1 does **not** claim Apple platform/Secure Enclave attestation when it has only demonstrated enrolled Secure-Enclave-backed signing behavior.
 
-### P1 — Authenticator assurance / attestation
+### P1 — Audit tamper resistance — RESOLVED BY W7-T11 FOR REQUEST AUDIT
 
-HAA v1 trusts the authenticated enrollment path plus the declared authenticator type. It does not independently attest that a registered `apple-secure-enclave` key was generated in a Secure Enclave.
+Delivered:
+- transactional hash chain over protocol request `audit_events`;
+- signed `haa.audit-checkpoint.v1` checkpoints;
+- ACTIVE/RETIRED authority-key verification of checkpoints;
+- offline audit verification command;
+- adversarial tests for mutation, deletion/reordering and DBA hash-chain recomputation.
 
-Recommendation: document assurance as enrollment-trust-based for v1; evaluate attestation only if the target threat model requires it.
+Boundary: `admin_audit_events` remains a separate operational stream and is not represented as request-audit checkpoint evidence in this increment.
 
-### P1 — Audit tamper resistance
+### P1 — Network edge controls — RESOLVED BY W7-T10
 
-Audit is append-only through the application API but a database administrator can modify SQLite directly.
+Delivered:
+- default `local` profile requires loopback;
+- explicit `edge` profile for non-loopback binds;
+- TLS, rate-limit, request-size, ACL/secrets/logging responsibilities documented at the trusted ingress boundary;
+- Fastify does not trust forwarded headers as identity inputs;
+- direct plain-HTTP exposure to an untrusted network is unsupported.
 
-Recommendation: for compliance/high-assurance deployments add external append-only export, hash chaining, signed checkpoints or another tamper-evident sink.
+### P2 — Runtime request schemas — RESOLVED BY W7-T06
 
-### P1 — Network edge controls
+HTTP inputs use strict bounded runtime validation before domain execution, including body size, identifiers, strings, nested JSON and exact request shapes.
 
-HAA exposes plain HTTP and relies on deployment infrastructure for TLS. There is no built-in rate limiting.
+### P2 — Dependency/build reproducibility — RESOLVED BY W7-T07
 
-Recommendation: require TLS termination at a trusted reverse proxy/service mesh and add rate limiting/abuse controls for networked production deployments.
+`package-lock.json` v3 is committed. CI uses `npm ci`; Docker uses `npm ci --omit=dev`. Build/package/test/typecheck/container gates run from the committed graph. Base-image policy is documented separately.
 
-### P2 — Runtime request schemas
+### P2 — Persistence availability — BOUNDED BY W7-T14
 
-HTTP handlers currently rely on TypeScript casts plus downstream domain validation rather than complete Fastify/Zod schemas for every request envelope.
+SQLite remains intentionally single-node/single-writer. W7-T14 adds a transactional backup/verified restore contract rather than claiming HA or multi-writer semantics.
 
-Recommendation: add explicit runtime schemas and bounded string/array/object sizes before exposing HAA to untrusted clients.
+### P2 — Detached grant verification — RESOLVED BY W7-T13
 
-### P2 — Dependency/build reproducibility
+The public TypeScript SDK verifies detached `ExecutionGrant` signature/key ID, schema/algorithm, request/action/execution/audience binding and expiry against ACTIVE/RETIRED authority public keys.
 
-The current repository does not pin a package-lock in source control. Docker therefore resolves allowed semver ranges at image build time.
+## New hardening controls added after the initial review
 
-Recommendation: commit a lockfile and prefer deterministic `npm ci` / immutable image digests for production releases.
+- coordinated DB + authority-key-ring backup bundle with checksums and audit-head binding;
+- pre/post restore consistency verification;
+- explicit network deployment profiles;
+- public authority key-ring endpoint;
+- deterministic npm installation path;
+- tamper-evident audit verification tooling.
 
-### P2 — Persistence availability
-
-SQLite is intentionally a single-node persistence target.
-
-Recommendation: do not claim HA/multi-writer support. Add a transactional server database adapter only if deployment requirements justify it.
-
-### P2 — Detached grant verification
-
-The reference executor receives its grant directly from HAA and trusts that authenticated/TLS channel. A future workflow that transports grants through an untrusted intermediary should independently verify the authority signature and audience/expiry/action binding.
-
-## Release posture
+## Current release posture
 
 | Target | Status |
 |---|---|
 | Local development | PASS |
 | Real Mac / Touch ID E2E | PASS |
 | Internal self-host pilot | PASS with documented deployment assumptions |
-| Future DubBridge integration work | READY after W7 software package gates |
-| Internet-exposed production | NOT READY |
-| Compliance/high-assurance production | NOT READY |
+| HAA engineering hardening W7-T06..T14 | PASS |
+| W7 production-readiness gate | BLOCKED on independent W7-T05 review |
+| Internet-exposed production | NOT DECLARED READY until W7-T05/T15 close |
+| Compliance/high-assurance deployment | Requires deployment-specific threat/compliance review |
 
-## Independent review handoff
+## Independent review requirement
 
-Before declaring a production release, ask an independent model/reviewer to challenge at minimum:
+The independent reviewer must assess the **current** post-hardening code, not only this first-party report. Challenge at minimum:
 
-- identity/provisioning assumptions;
-- evidence/authenticator assurance claims;
-- action canonicalization and cross-language signing;
-- consume/idempotency race behavior;
-- authority-key lifecycle;
-- executor trust boundary;
-- audit integrity;
-- self-host deployment/secrets/network boundary;
-- v1 compatibility rules.
+- identity/provisioning and client-role escalation assumptions;
+- action canonicalization / signed-byte compatibility;
+- authenticator assurance wording;
+- challenge/evidence behavior across authority-key rotation;
+- receipt/grant key lifecycle and detached verification;
+- consume/idempotency/concurrency behavior;
+- audit hash-chain/checkpoint migration and DBA threat model;
+- backup/key-ring/database consistency and recovery failure modes;
+- self-host network/TLS/rate-limit/secrets boundary;
+- protocol-v1 compatibility and downgrade/fail-closed rules.
+
+Classify findings as `BLOCKING`, `P1`, `P2` or `ACCEPTED-RISK`. W7-T05 may close only when no BLOCKING finding remains.
