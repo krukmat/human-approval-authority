@@ -4,6 +4,12 @@ import Security
 import LocalAuthentication
 #endif
 
+func encodePublicKeyPEM(_ spki: Data) -> String {
+    let b64 = spki.base64EncodedString(options: [.lineLength64Characters, .endLineWithLineFeed])
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    return "-----BEGIN PUBLIC KEY-----\n\(b64)\n-----END PUBLIC KEY-----\n"
+}
+
 #if os(macOS)
 final class SecureEnclaveAuthenticator {
     private let tag: Data
@@ -37,7 +43,7 @@ final class SecureEnclaveAuthenticator {
             throw error?.takeRetainedValue() ?? NSError(domain: "HAA", code: 11)
         }
         guard raw.count == 65 else { throw NSError(domain: "HAA", code: 12, userInfo: [NSLocalizedDescriptionKey: "Unexpected P-256 public key size"]) }
-        return pem(spki: p256SPKIPrefix + raw)
+        return encodePublicKeyPEM(p256SPKIPrefix + raw)
     }
 
     func delete() throws {
@@ -59,7 +65,7 @@ final class SecureEnclaveAuthenticator {
         guard let publicKey = SecKeyCopyPublicKey(key), let raw = SecKeyCopyExternalRepresentation(publicKey, &error) as Data? else {
             throw error?.takeRetainedValue() ?? NSError(domain: "HAA", code: 13)
         }
-        return pem(spki: p256SPKIPrefix + raw)
+        return encodePublicKeyPEM(p256SPKIPrefix + raw)
     }
 
     func signApprovalDigest(_ digest: String, prompt: String) throws -> String {
@@ -90,12 +96,6 @@ final class SecureEnclaveAuthenticator {
             throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
         }
         return key
-    }
-
-    private func pem(spki: Data) -> String {
-        let b64 = spki.base64EncodedString(options: [.lineLength64Characters, .endLineWithLineFeed])
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return "-----BEGIN PUBLIC KEY-----\n\(b64)\n-----END PUBLIC KEY-----\n"
     }
 }
 #else
