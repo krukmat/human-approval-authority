@@ -10,3 +10,18 @@ jobs:
       - run: npm install
       - run: npm test
       - run: npx tsc --noEmit
+
+  macos-approver-compile:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift package tests
+        run: swift test --package-path macos/haa-approver
+      - name: Compile app-like approver wrapper
+        run: >-
+          xcodebuild
+          -project macos/haa-approver-app/HAAApprover.xcodeproj
+          -target HAAApprover
+          -configuration Release
+          CODE_SIGNING_ALLOWED=NO
+          build
