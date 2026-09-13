@@ -11,7 +11,7 @@ import {
   issueChallenge,
   verifyChallengeAuthority,
 } from '../packages/core/src/index.ts';
-import type { ApprovalRequest } from '../packages/protocol/src/index.ts';
+import type { ActionSpec, ApprovalRequest } from '../packages/protocol/src/index.ts';
 
 test('canonicalization is deterministic across key order', () => {
   assert.equal(canonicalize({ b: 2, a: 1 }), canonicalize({ a: 1, b: 2 }));
@@ -23,6 +23,49 @@ test('approval-critical action mutation changes digest', () => {
   const a = { schema: 'haa.action.v1' as const, type: 'demo.action.v1', payload: { resource: 'prod', operation: 'deploy' } };
   const b = { schema: 'haa.action.v1' as const, type: 'demo.action.v1', payload: { resource: 'prod', operation: 'delete' } };
   assert.notEqual(profiles.actionDigest(a), profiles.actionDigest(b));
+});
+
+test('action profiles reject undisplayed semantic fields and display accepted preconditions', () => {
+  const profiles = new ActionProfileRegistry();
+  const hiddenPayload = {
+    schema: 'haa.action.v1',
+    type: 'demo.action.v1',
+    payload: { resource: 'prod', operation: 'deploy', hiddenMode: 'dangerous' },
+  } as ActionSpec;
+  assert.throws(() => profiles.validate(hiddenPayload), /UNEXPECTED_PAYLOAD_FIELD:hiddenMode/);
+
+  const hiddenPrecondition = {
+    schema: 'haa.action.v1',
+    type: 'demo.action.v1',
+    payload: { resource: 'prod', operation: 'deploy' },
+    preconditions: { version: 'v1', hiddenConstraint: 'x' },
+  } as ActionSpec;
+  assert.throws(() => profiles.validate(hiddenPrecondition), /UNEXPECTED_PRECONDITION_FIELD:hiddenConstraint/);
+
+  const visible: ActionSpec = {
+    schema: 'haa.action.v1',
+    type: 'demo.action.v1',
+    payload: { resource: 'prod', operation: 'deploy' },
+    preconditions: { version: 'v1' },
+  };
+  assert.deepEqual(profiles.displayClaims(visible).map((claim) => [claim.label, claim.value]), [
+    ['ACTION', 'deploy'],
+    ['RESOURCE', 'prod'],
+    ['EXPECTED VERSION', 'v1'],
+  ]);
+
+  const mergeWithHiddenPrecondition = {
+    schema: 'haa.action.v1',
+    type: 'git.merge.v1',
+    payload: {
+      repository: 'org/repo',
+      sourceCommitSha: 'abc',
+      targetBranch: 'main',
+      targetCommitBefore: 'def',
+    },
+    preconditions: { force: true },
+  } as ActionSpec;
+  assert.throws(() => profiles.validate(mergeWithHiddenPrecondition), /UNEXPECTED_PRECONDITION_FIELD:force/);
 });
 
 test('state machine denies invalid transition', () => {
