@@ -18,64 +18,57 @@ function resolveDeveloperDir() {
   if (existsSync(join(standardXcode, 'usr/bin/xcodebuild'))) return standardXcode;
 
   throw new Error(
-    'Full Xcode is required for the macOS Secure Enclave gate. Install/open Xcode once, sign in under Xcode > Settings > Accounts, then rerun. Command Line Tools alone cannot create the provisioning profile required by the Data Protection Keychain.',
-  );
-}
-
-function resolveTeamId(env) {
-  if (process.env.HAA_APPLE_TEAM_ID) return process.env.HAA_APPLE_TEAM_ID;
-
-  const identities = commandOutput('/usr/bin/security', ['find-identity', '-v', '-p', 'codesigning'], { env }) ?? '';
-  const developmentTeams = [...identities.matchAll(/Apple Development:[^\n]*\(([A-Z0-9]{10})\)/g)].map((match) => match[1]);
-  const unique = [...new Set(developmentTeams)];
-  if (unique.length === 1) return unique[0];
-  if (unique.length > 1) {
-    throw new Error(`Multiple Apple Development teams detected (${unique.join(', ')}). Set HAA_APPLE_TEAM_ID to the team to use.`);
-  }
-
-  throw new Error(
-    'No Apple Development signing identity was detected. Open Xcode > Settings > Accounts, sign in, create an Apple Development certificate for your team, then rerun. You can also set HAA_APPLE_TEAM_ID explicitly once the identity exists.',
+    'Full Xcode is required for the macOS Secure Enclave gate. Install/open Xcode once, sign in under Xcode > Settings > Apple Accounts, select a Team for the HAAApprover target, then rerun. Command Line Tools alone cannot create the provisioning profile required by the Data Protection Keychain.',
   );
 }
 
 export function buildProvisionedMacApprover({ repoRoot, buildRoot }) {
   const developerDir = resolveDeveloperDir();
   const env = { ...process.env, DEVELOPER_DIR: developerDir };
-  const teamId = resolveTeamId(env);
+  const explicitTeamId = process.env.HAA_APPLE_TEAM_ID?.trim() || null;
   const bundleId = process.env.HAA_APPLE_BUNDLE_ID ?? 'com.krukmat.haa.approver';
   const project = join(repoRoot, 'macos', 'haa-approver-app', 'HAAApprover.xcodeproj');
   const outputDir = join(buildRoot, 'haa-approver-app');
 
   const nodeMajor = Number(process.versions.node.split('.')[0]);
   if (nodeMajor < 24) {
-    console.warn(`⚠ HAA declares Node >=24; current validation runtime is Node ${process.versions.node}. The macOS signing fix is independent, but use Node 24 for CI parity.`);
+    console.warn(`⚠ HAA declares Node >=24; current validation runtime is Node ${process.versions.node}. Use Node 24 for CI parity.`);
   }
 
-  console.log(`✓ macOS signing team: ${teamId}`);
+  if (explicitTeamId) {
+    console.log(`✓ macOS signing team override: ${explicitTeamId}`);
+  } else {
+    console.log('✓ macOS signing team: using the Team selected in Xcode Signing & Capabilities');
+  }
   console.log(`✓ macOS approver bundle id: ${bundleId}`);
 
-  execFileSync(
-    '/usr/bin/xcodebuild',
-    [
-      '-project', project,
-      '-target', 'HAAApprover',
-      '-configuration', 'Release',
-      '-allowProvisioningUpdates',
-      `DEVELOPMENT_TEAM=${teamId}`,
-      'CODE_SIGN_STYLE=Automatic',
-      `PRODUCT_BUNDLE_IDENTIFIER=${bundleId}`,
-      `CONFIGURATION_BUILD_DIR=${outputDir}`,
-      'build',
-    ],
-    { cwd: repoRoot, env, stdio: 'inherit' },
-  );
+  const buildArguments = [
+    '-project', project,
+    '-target', 'HAAApprover',
+    '-configuration', 'Release',
+    '-allowProvisioningUpdates',
+    'CODE_SIGN_STYLE=Automatic',
+    `PRODUCT_BUNDLE_IDENTIFIER=${bundleId}`,
+    `CONFIGURATION_BUILD_DIR=${outputDir}`,
+  ];
+  if (explicitTeamId) buildArguments.push(`DEVELOPMENT_TEAM=${explicitTeamId}`);
+  buildArguments.push('build');
+
+  try {
+    execFileSync('/usr/bin/xcodebuild', buildArguments, { cwd: repoRoot, env, stdio: 'inherit' });
+  } catch (error) {
+    throw new Error(
+      'Xcode automatic signing failed. Open macos/haa-approver-app/HAAApprover.xcodeproj, select target HAAApprover > Signing & Capabilities, enable Automatically manage signing and select your Personal Team. Resolve any red signing error in Xcode, then rerun npm run validate:agent-macos. HAA_APPLE_TEAM_ID is optional and should only be used when you intentionally want to override the Xcode-selected team.',
+      { cause: error },
+    );
+  }
 
   const appPath = join(outputDir, 'HAAApprover.app');
   const executablePath = join(appPath, 'Contents', 'MacOS', 'HAAApprover');
   const profilePath = join(appPath, 'Contents', 'embedded.provisionprofile');
   if (!existsSync(executablePath)) throw new Error(`Provisioned approver executable was not produced at ${executablePath}`);
   if (!existsSync(profilePath)) {
-    throw new Error('Xcode built the app without an embedded provisioning profile. The Secure Enclave path requires a provisioned app identity; verify the selected Apple Development team and automatic signing configuration.');
+    throw new Error('Xcode built the app without an embedded provisioning profile. Open the project in Xcode and confirm that the HAAApprover target shows your Personal Team with Automatically manage signing enabled and no signing errors.');
   }
 
   execFileSync('/usr/bin/codesign', ['--verify', '--strict', appPath], { env, stdio: 'inherit' });
@@ -85,5 +78,5 @@ export function buildProvisionedMacApprover({ repoRoot, buildRoot }) {
   }
 
   console.log('✓ Provisioned macOS approver built and code signature verified');
-  return { appPath, executablePath, teamId, bundleId };
+  return { appPath, executablePath, teamId: explicitTeamId, bundleId };
 }
