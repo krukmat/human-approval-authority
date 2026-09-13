@@ -29,6 +29,7 @@ func askForApproval(_ payload: ChallengePayload, timeoutSeconds: TimeInterval? =
     alert.informativeText = lines.joined(separator: "\n")
         + "\n\nRequest: \(payload.requestId)"
         + "\n\nEsc: Reject"
+        + "\n⌘W: Close"
     alert.addButton(withTitle: "Approve with Touch ID")
 
     var rejectionReason: RejectionReason?
@@ -47,6 +48,16 @@ func askForApproval(_ payload: ChallengePayload, timeoutSeconds: TimeInterval? =
             alert.window.orderOut(nil)
             return nil
         }
+
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if modifiers.contains(.command),
+           event.charactersIgnoringModifiers?.lowercased() == "w" {
+            rejectionReason = .windowClosed
+            NSApp.abortModal()
+            alert.window.orderOut(nil)
+            return nil
+        }
+
         return event
     }
     defer {
