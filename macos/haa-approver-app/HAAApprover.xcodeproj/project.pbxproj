@@ -1,7 +1,8 @@
 // !$*UTF8*$!
 {
 	archiveVersion = 1;
-	classes = {};
+	classes = {
+	};
 	objectVersion = 56;
 	objects = {
 
@@ -27,7 +28,8 @@
 		A30000000000000000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
-			files = ();
+			files = (
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -36,13 +38,13 @@
 		A40000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				A40000000000000000000002 /* Sources */,
+				A40000000000000000000002 /* ../haa-approver/Sources/HAAApprover */,
 				A20000000000000000000006 /* HAAApprover.entitlements */,
 				A40000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		A40000000000000000000002 /* Sources */ = {
+		A40000000000000000000002 /* ../haa-approver/Sources/HAAApprover */ = {
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000001 /* ApprovalUI.swift */,
@@ -51,7 +53,7 @@
 				A20000000000000000000004 /* SecureEnclave.swift */,
 				A20000000000000000000005 /* main.swift */,
 			);
-			path = ../haa-approver/Sources/HAAApprover;
+			path = "../haa-approver/Sources/HAAApprover";
 			sourceTree = "<group>";
 		};
 		A40000000000000000000003 /* Products */ = {
@@ -73,8 +75,10 @@
 				A30000000000000000000001 /* Frameworks */,
 				A70000000000000000000001 /* Resources */,
 			);
-			buildRules = ();
-			dependencies = ();
+			buildRules = (
+			);
+			dependencies = (
+			);
 			name = HAAApprover;
 			productName = HAAApprover;
 			productReference = A20000000000000000000007 /* HAAApprover.app */;
@@ -99,7 +103,10 @@
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
-			knownRegions = (en, Base);
+			knownRegions = (
+				en,
+				Base,
+			);
 			mainGroup = A40000000000000000000001;
 			productRefGroup = A40000000000000000000003 /* Products */;
 			projectDirPath = "";
@@ -114,7 +121,8 @@
 		A70000000000000000000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = ();
+			files = (
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
@@ -163,6 +171,7 @@
 				CODE_SIGN_ENTITLEMENTS = HAAApprover.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = LFFHH7K56Y;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "HAA Approver";
@@ -181,6 +190,7 @@
 				CODE_SIGN_ENTITLEMENTS = HAAApprover.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = LFFHH7K56Y;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "HAA Approver";
