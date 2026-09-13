@@ -1,3 +1,20 @@
+export const HAA_PROTOCOL_VERSION = 1 as const;
+export const HAA_PROTOCOL_RELEASE = '1.0.0' as const;
+
+export const HAA_V1_SCHEMAS = Object.freeze({
+  action: 'haa.action.v1',
+  intent: 'haa.intent.v1',
+  request: 'haa.request.v1',
+  challengePayload: 'haa.challenge-payload.v1',
+  challenge: 'haa.challenge.v1',
+  evidence: 'haa.evidence.v1',
+  verifiedEvidence: 'haa.verified-evidence.v1',
+  receipt: 'haa.receipt.v1',
+  executionGrant: 'haa.execution-grant.v1',
+  authenticator: 'haa.authenticator.v1',
+  audit: 'haa.audit.v1',
+} as const);
+
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
