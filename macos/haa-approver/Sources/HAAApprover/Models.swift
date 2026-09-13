@@ -41,6 +41,34 @@ struct ApprovalEvidence: Encodable {
     let signature: String
 }
 
+enum UnknownCeremonyReason: String, Encodable {
+    case windowClosed = "WINDOW_CLOSED"
+    case localTimeout = "LOCAL_TIMEOUT"
+    case interactionError = "INTERACTION_ERROR"
+    case authenticatorUnavailable = "AUTHENTICATOR_UNAVAILABLE"
+}
+
+enum CeremonyDecision: Equatable {
+    case approve
+    case reject
+    case unknown(UnknownCeremonyReason)
+}
+
+struct CeremonyResultOutput: Encodable {
+    let outcome: String
+    let requestId: String
+    let challengeDigest: String
+    let reason: String
+
+    static func reject(requestId: String, challengeDigest: String) -> CeremonyResultOutput {
+        CeremonyResultOutput(outcome: "REJECT", requestId: requestId, challengeDigest: challengeDigest, reason: "USER_ESCAPE")
+    }
+
+    static func unknown(requestId: String, challengeDigest: String, reason: UnknownCeremonyReason) -> CeremonyResultOutput {
+        CeremonyResultOutput(outcome: "UNKNOWN", requestId: requestId, challengeDigest: challengeDigest, reason: reason.rawValue)
+    }
+}
+
 extension Data {
     init?(base64URL: String) {
         var s = base64URL.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
