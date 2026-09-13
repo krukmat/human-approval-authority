@@ -5,13 +5,14 @@ import { loadOrCreateAuthoritySigner } from './authority.ts';
 
 const dbPath = process.env.HAA_DB_PATH ?? './haa.db';
 const store = new SqliteStore(dbPath);
+const authorityOptions = {
+  ...(process.env.HAA_AUTHORITY_KEY_ID ? { keyId: process.env.HAA_AUTHORITY_KEY_ID } : {}),
+  ...(process.env.HAA_AUTHORITY_PRIVATE_KEY_PEM ? { privateKeyPem: process.env.HAA_AUTHORITY_PRIVATE_KEY_PEM } : {}),
+  ...(process.env.HAA_AUTHORITY_KEY_FILE ? { keyFile: process.env.HAA_AUTHORITY_KEY_FILE } : {}),
+};
 const app = new HaaApplication({
   store,
-  authoritySigner: loadOrCreateAuthoritySigner({
-    keyId: process.env.HAA_AUTHORITY_KEY_ID,
-    privateKeyPem: process.env.HAA_AUTHORITY_PRIVATE_KEY_PEM,
-    keyFile: process.env.HAA_AUTHORITY_KEY_FILE,
-  }),
+  authoritySigner: loadOrCreateAuthoritySigner(authorityOptions),
 });
 
 if (process.env.HAA_DEV_BOOTSTRAP === '1') {
