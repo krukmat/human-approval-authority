@@ -14,7 +14,7 @@
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:core": "node --experimental-strip-types --test tests/core.test.ts",
     "test:service": "node --experimental-strip-types --test tests/service.test.ts",
-    "check": "npm run test",
+    "check": "npm run test && npx tsc --noEmit",
     "start": "node --experimental-strip-types apps/haa-server/src/server.ts"
   },
   "dependencies": {
@@ -23,6 +23,7 @@
     "zod": "^4.1.0"
   },
   "devDependencies": {
+    "@types/node": "^24.0.0",
     "typescript": "^5.9.0"
   }
 }
