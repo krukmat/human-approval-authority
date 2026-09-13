@@ -69,4 +69,4 @@ tasks:
   - {id: W8-T06, wave: W8, title: "SDK and CLI ceremony result contract", depends_on: [W8-T03, W8-T04, W7-T03], status: DONE}
   - {id: W8-T07, wave: W8, title: "Ceremony audit and observability semantics", depends_on: [W8-T03, W8-T04, W7-T11], status: DONE}
   - {id: W8-T08, wave: W8, title: "HAA-only automated ceremony end-to-end validation", depends_on: [W8-T05, W8-T06, W8-T07], status: DONE}
-  - {id: W8-T09, wave: W8, title: "Physical macOS ceremony and compatibility gate", depends_on: [W8-T08, W7-T15], status: READY}
+  - {id: W8-T09, wave: W8, title: "Physical macOS ceremony and compatibility gate", depends_on: [W8-T08, W7-T15], status: DONE}
