@@ -11,11 +11,15 @@
     "apps/*"
   ],
   "scripts": {
+    "build:protocol": "npm run build -w @haa/protocol",
+    "build:sdk": "npm run build:protocol && npm run build -w @haa/sdk",
+    "build:packages": "npm run build:protocol && npm run build -w @haa/sdk",
+    "pack:check": "npm run build:packages && npm pack --dry-run -w @haa/protocol && npm pack --dry-run -w @haa/sdk",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:core": "node --experimental-strip-types --test tests/core.test.ts",
     "test:service": "node --experimental-strip-types --test tests/service.test.ts",
     "test:mcp": "node --experimental-strip-types --test tests/mcp.test.ts",
-    "check": "npm run test && npx tsc --noEmit",
+    "check": "npm run build:packages && npm run test && npx tsc --noEmit",
     "validate:macos": "node scripts/validate-macos-e2e.mjs",
     "validate:agent-macos": "node scripts/validate-agent-macos-e2e.mjs",
     "provision:client": "node --experimental-strip-types scripts/provision-client.mjs",
