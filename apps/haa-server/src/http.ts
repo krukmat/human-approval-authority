@@ -60,9 +60,16 @@ const authenticatorSchema = z.object({
 }).strict();
 
 const challengeRequestSchema = z.object({ authenticatorId: identifier }).strict();
+const rejectionReasonSchema = z.enum([
+  'USER_ESCAPE',
+  'WINDOW_CLOSED',
+  'TIMEOUT',
+  'CHALLENGE_EXPIRED',
+  'INTERACTION_ERROR',
+]);
 const rejectSchema = z.object({
   challengeDigest: z.string().min(1).max(MAX_STRING),
-  reason: z.literal('USER_ESCAPE'),
+  reason: rejectionReasonSchema,
 }).strict();
 
 const evidenceSchema = z.object({
