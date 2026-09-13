@@ -16,9 +16,9 @@ const app = new HaaApplication({
 });
 
 if (process.env.HAA_DEV_BOOTSTRAP === '1') {
-  app.registerClient(process.env.HAA_AGENT_ID ?? 'agent-dev', process.env.HAA_AGENT_KEY ?? 'agent-dev-secret');
-  app.registerClient(process.env.HAA_HUMAN_ID ?? 'human-dev', process.env.HAA_HUMAN_KEY ?? 'human-dev-secret');
-  app.registerClient(process.env.HAA_EXECUTOR_ID ?? 'executor-dev', process.env.HAA_EXECUTOR_KEY ?? 'executor-dev-secret');
+  app.registerClient(process.env.HAA_AGENT_ID ?? 'agent-dev', process.env.HAA_AGENT_KEY ?? 'agent-dev-secret', ['REQUESTER']);
+  app.registerClient(process.env.HAA_HUMAN_ID ?? 'human-dev', process.env.HAA_HUMAN_KEY ?? 'human-dev-secret', ['APPROVER']);
+  app.registerClient(process.env.HAA_EXECUTOR_ID ?? 'executor-dev', process.env.HAA_EXECUTOR_KEY ?? 'executor-dev-secret', ['EXECUTOR']);
 }
 
 const server = buildHttpServer(app);
