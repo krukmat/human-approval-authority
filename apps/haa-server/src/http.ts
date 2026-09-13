@@ -60,6 +60,10 @@ const authenticatorSchema = z.object({
 }).strict();
 
 const challengeRequestSchema = z.object({ authenticatorId: identifier }).strict();
+const rejectSchema = z.object({
+  challengeDigest: z.string().min(1).max(MAX_STRING),
+  reason: z.literal('USER_ESCAPE'),
+}).strict();
 
 const evidenceSchema = z.object({
   schema: z.literal('haa.evidence.v1'),
@@ -111,7 +115,7 @@ export function buildHttpServer(app: HaaApplication, options: HttpServerOptions 
     const status = message === 'UNAUTHORIZED' ? 401
       : message === 'FORBIDDEN' || message === 'SELF_APPROVAL_FORBIDDEN' ? 403
       : message.includes('NOT_FOUND') ? 404
-      : message.includes('MISMATCH') || message.includes('STALE') || message.includes('EXPIRED') || message.includes('NOT_APPROVED') ? 409
+      : message.includes('MISMATCH') || message.includes('STALE') || message.includes('EXPIRED') || message.includes('NOT_APPROVED') || message.includes('NOT_PENDING') ? 409
       : 400;
     reply.code(status).send({ error: message });
   });
@@ -163,6 +167,17 @@ export function buildHttpServer(app: HaaApplication, options: HttpServerOptions 
     const { id } = parse(idParamsSchema, request.params);
     const body = parse(challengeRequestSchema, request.body);
     return app.issueApprovalChallenge({ apiKey: apiKey(request.headers), requestId: id, authenticatorId: body.authenticatorId });
+  });
+
+  server.post('/v1/approval-requests/:id/reject', async (request) => {
+    const { id } = parse(idParamsSchema, request.params);
+    const body = parse(rejectSchema, request.body);
+    return app.rejectApproval({
+      apiKey: apiKey(request.headers),
+      requestId: id,
+      challengeDigest: body.challengeDigest,
+      reason: body.reason,
+    });
   });
 
   server.post('/v1/approval-evidence', async (request) => {
