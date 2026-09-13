@@ -2,12 +2,12 @@ FROM node:24-bookworm-slim
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 COPY packages ./packages
 COPY apps ./apps
 COPY scripts ./scripts
 
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 RUN mkdir -p /data /keys \
     && chown -R node:node /app /data /keys
