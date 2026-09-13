@@ -111,7 +111,19 @@ verifyExecutionGrant({
 });
 ```
 
-The verifier checks strict object shape, the retained HAA authority key, signature algorithm/signature, expiry and exact request/action/execution/audience bindings. ACTIVE and RETIRED authority public keys may verify artifacts that were legitimately signed while that key was active.
+Live execution authority is stricter than historical signature verification. `verifyExecutionGrant(...)` accepts only the **currently ACTIVE** authority key. A RETIRED key remains useful for historical verification of artifacts such as receipts/audit evidence, but it cannot authorize a live detached `ExecutionGrant`.
+
+The verifier also checks:
+
+- strict object shape and supported schema/algorithm;
+- signature and exact request/action/execution/audience bindings;
+- `issuedAt < expiresAt`;
+- grant issuance is not unreasonably in the future;
+- issuance is not before the ACTIVE key's creation time when that metadata is present;
+- the grant TTL does not exceed the v1 default execution policy (30 seconds unless the executor explicitly supplies another trusted local policy);
+- the grant has not expired.
+
+This prevents a retained/compromised RETIRED private key from minting fresh execution authority after key rotation.
 
 ## Errors
 
@@ -131,7 +143,7 @@ try {
 
 `code` preserves HAA's machine-readable failure string such as `UNAUTHORIZED`, `ACTION_DIGEST_MISMATCH`, `CHALLENGE_EXPIRED`, `STALE_APPROVAL` or `REQUEST_NOT_APPROVED:REJECTED`.
 
-Detached verification failures throw `HaaGrantVerificationError` with a bounded verification code such as `INVALID_GRANT_SIGNATURE`, `UNKNOWN_AUTHORITY_KEY`, `GRANT_EXPIRED` or a binding mismatch.
+Detached verification failures throw `HaaGrantVerificationError` with a bounded verification code such as `INVALID_GRANT_SIGNATURE`, `AUTHORITY_KEY_NOT_ACTIVE`, `GRANT_TTL_EXCEEDS_POLICY`, `GRANT_EXPIRED` or a binding mismatch.
 
 ## Compatibility
 
