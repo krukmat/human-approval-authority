@@ -17,6 +17,7 @@ USER node
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=8787 \
+    HAA_NETWORK_PROFILE=edge \
     HAA_DB_PATH=/data/haa.db \
     HAA_AUTHORITY_KEY_FILE=/keys/authority-key.pem \
     HAA_AUTHORITY_KEYRING_FILE=/keys/authority-keyring.json
