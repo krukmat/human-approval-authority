@@ -1,6 +1,6 @@
 # @haa/sdk
 
-Typed requester/executor client for Human Approval Authority.
+Typed requester/executor/ceremony client for Human Approval Authority.
 
 ## Install
 
@@ -34,13 +34,49 @@ const request = await haa.requestApproval({
 });
 ```
 
+## Ceremony outcomes
+
+HAA distinguishes three caller-visible ceremony outcomes:
+
+```text
+APPROVE  verified positive authenticator evidence
+REJECT   explicit authenticated refusal
+UNKNOWN  no attributable human decision
+```
+
+Only APPROVE can eventually produce an `ExecutionGrant`.
+
+An approver-side client may submit the explicit Esc rejection for the exact active challenge:
+
+```ts
+const result = await approverClient.rejectApproval({
+  requestId: request.id,
+  challengeDigest,
+  reason: 'USER_ESCAPE',
+});
+
+// { outcome: 'REJECT', state: 'REJECTED', ... }
+```
+
+`rejectApproval` must be called with the configured approver principal's `APPROVER` credential. A requester/executor credential cannot use the endpoint merely because it knows the request ID or challenge digest.
+
+Window close, local timeout, app termination or similar indeterminate outcomes are local results and do not assert a server-side human decision:
+
+```ts
+import { unknownCeremonyResult } from '@haa/sdk';
+
+const result = unknownCeremonyResult(request.id, 'LOCAL_TIMEOUT');
+// { outcome: 'UNKNOWN', requestId: ..., reason: 'LOCAL_TIMEOUT' }
+```
+
+If the underlying request is still valid, UNKNOWN leaves it `PENDING`. Actual lifecycle expiry remains `EXPIRED`, not `REJECTED` or UNKNOWN.
+
 ## Authorize exact execution
 
 ```ts
-const executionId = crypto.randomUUID();
 const grant = await haa.authorize({
   requestId: request.id,
-  executionId,
+  executionId: crypto.randomUUID(),
   actualAction: action,
   actualState: { version: 'v42' },
 });
@@ -48,9 +84,9 @@ const grant = await haa.authorize({
 
 The executor must treat `ExecutionGrant` as the execution authority. `ApprovalReceipt` is audit evidence and is not a bearer capability.
 
-## Verify a detached ExecutionGrant
+## Detached grant verification
 
-When a grant reaches the executor through an untrusted intermediary, verify it locally before treating it as authority:
+When a grant is transported through an intermediary, verify it independently before execution:
 
 ```ts
 import { verifyExecutionGrant } from '@haa/sdk';
@@ -61,23 +97,13 @@ verifyExecutionGrant({
   grant,
   authorityKeys,
   expectedRequestId: request.id,
-  expectedExecutionId: executionId,
+  expectedExecutionId: grant.executionId,
   expectedActionDigest: request.actionDigest,
   expectedExecutorAudience: 'executor-prod',
 });
 ```
 
-Detached verification fails closed on:
-
-- unsupported grant schema or signature algorithm;
-- unknown `authorityKeyId`;
-- key/algorithm mismatch;
-- invalid signature or signed-field mutation;
-- request, execution, action-digest or executor-audience mismatch;
-- expired grant;
-- unexpected fields in the frozen `haa.execution-grant.v1` shape.
-
-`getAuthorityKeys()` returns the public authority key ring, including retained `RETIRED` public keys. This allows historical grants to remain cryptographically verifiable after HAA rotates to a new ACTIVE signing key.
+The verifier checks strict object shape, the retained HAA authority key, signature algorithm/signature, expiry and exact request/action/execution/audience bindings. ACTIVE and RETIRED authority public keys may verify artifacts that were legitimately signed while that key was active.
 
 ## Errors
 
@@ -95,10 +121,10 @@ try {
 }
 ```
 
-`code` preserves HAA's machine-readable failure string such as `UNAUTHORIZED`, `ACTION_DIGEST_MISMATCH`, `STALE_APPROVAL` or `REQUEST_NOT_APPROVED:CONSUMED`.
+`code` preserves HAA's machine-readable failure string such as `UNAUTHORIZED`, `ACTION_DIGEST_MISMATCH`, `CHALLENGE_EXPIRED`, `STALE_APPROVAL` or `REQUEST_NOT_APPROVED:REJECTED`.
 
-Detached grant failures throw `HaaGrantVerificationError` with a stable verification error code.
+Detached verification failures throw `HaaGrantVerificationError` with a bounded verification code such as `INVALID_GRANT_SIGNATURE`, `UNKNOWN_AUTHORITY_KEY`, `GRANT_EXPIRED` or a binding mismatch.
 
 ## Compatibility
 
-This SDK consumes `@haa/protocol` v1. See the repository's `docs/PROTOCOL-V1.md` for the frozen wire-contract and extension rules.
+This SDK consumes `@haa/protocol` v1. W8 ceremony outcomes do not add `UNKNOWN` to `ApprovalState` and do not mutate frozen approval-bearing v1 schemas. See `docs/PROTOCOL-V1.md` and `docs/W8-CEREMONY-OUTCOMES.md`.
