@@ -1,6 +1,6 @@
 # W8-T09 physical macOS ceremony and compatibility gate
 
-Status: **BLOCKED BY W7-T15**
+Status: **READY**
 
 This is the final HAA-only physical validation after the software production-readiness gate. It runs on a provisioned Apple Silicon Mac with Touch ID and validates the actual trusted-display / Secure Enclave boundary.
 
@@ -115,7 +115,7 @@ Run:
 npm run validate:macos-ceremony -- --case window-close
 ```
 
-Close the HAA ceremony using its standard window close control without Touch ID approval.
+Press `⌘W` while the trusted HAA ceremony is active. If macOS exposes a standard close control for the alert, that control is equivalent. HAA captures `⌘W` explicitly so this gate does not depend on `NSAlert` exposing a red close button.
 
 Expected:
 
@@ -127,7 +127,7 @@ audit assurance=fail-closed-terminal
 ExecutionGrant impossible
 ```
 
-Do not describe this as proof that the human explicitly selected Reject.
+`⌘W` is treated as a deterministic window-close gesture. It is still `fail-closed-terminal`, not proof that the human explicitly selected Reject.
 
 Result: `PENDING PHYSICAL EXECUTION`
 
@@ -222,7 +222,7 @@ Result: `PENDING PHYSICAL EXECUTION`
 ```text
 Touch ID success       APPROVE                   grant possible   PASS/FAIL
 Esc                    REJECT/USER_ESCAPE        no grant         PASS/FAIL
-Window close           REJECT/WINDOW_CLOSED      no grant         PASS/FAIL
+⌘W / window close      REJECT/WINDOW_CLOSED      no grant         PASS/FAIL
 Timeout                REJECT/TIMEOUT            no grant         PASS/FAIL
 Challenge expiry       REJECT/CHALLENGE_EXPIRED  no grant         PASS/FAIL
 Interaction failure    REJECT/INTERACTION_ERROR  no grant         PASS/FAIL/N-A
