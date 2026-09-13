@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import type {
   ApprovalChallengePackage,
@@ -32,12 +32,38 @@ export interface ClientCredentialHistoryEntry {
   retiredAt?: string;
 }
 
+export interface AuditIntegrityHead {
+  sequence: number;
+  digest: string;
+}
+
+export interface StoredAuditCheckpoint {
+  schema: 'haa.audit-checkpoint.v1';
+  sequence: number;
+  headDigest: string;
+  createdAt: string;
+  authorityKeyId: string;
+  signatureAlgorithm: 'Ed25519' | 'ES256';
+  signature: string;
+}
+
 const ALL_CLIENT_ROLES: ClientRole[] = ['REQUESTER', 'APPROVER', 'EXECUTOR'];
 
 function normalizeRoles(roles: ClientRole[]): ClientRole[] {
   const unique = [...new Set(roles)];
   if (unique.length === 0 || unique.some((role) => !ALL_CLIENT_ROLES.includes(role))) throw new Error('INVALID_CLIENT_ROLES');
   return unique;
+}
+
+function auditDigest(sequence: number, eventId: string, eventJson: string, previousDigest: string | null): string {
+  const envelope = JSON.stringify({
+    schema: 'haa.audit-chain.v1',
+    sequence,
+    eventId,
+    previousDigest,
+    eventJson,
+  });
+  return `sha256:${createHash('sha256').update(envelope).digest('base64url')}`;
 }
 
 export class SqliteStore {
@@ -125,8 +151,23 @@ export class SqliteStore {
         event_json TEXT NOT NULL,
         at TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS audit_integrity (
+        seq INTEGER PRIMARY KEY,
+        event_id TEXT NOT NULL UNIQUE,
+        prev_digest TEXT,
+        event_digest TEXT NOT NULL,
+        FOREIGN KEY(event_id) REFERENCES audit_events(id)
+      );
+      CREATE TABLE IF NOT EXISTS audit_checkpoints (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        audit_sequence INTEGER NOT NULL,
+        head_digest TEXT NOT NULL,
+        checkpoint_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
       CREATE INDEX IF NOT EXISTS idx_audit_request ON audit_events(request_id, at);
       CREATE INDEX IF NOT EXISTS idx_admin_audit_target ON admin_audit_events(target_id, seq);
+      CREATE INDEX IF NOT EXISTS idx_audit_checkpoint_sequence ON audit_checkpoints(audit_sequence, seq);
     `);
 
     this.ensureClientColumn('roles_json', `TEXT NOT NULL DEFAULT '["REQUESTER","APPROVER","EXECUTOR"]'`);
@@ -144,6 +185,8 @@ export class SqliteStore {
       COALESCE(created_at, ?), credential_expires_at,
       CASE WHEN enabled = 1 THEN NULL ELSE COALESCE(updated_at, ?) END
       FROM clients`).run(now, now);
+
+    this.initializeAuditIntegrity();
   }
 
   close(): void { this.db.close(); }
@@ -379,14 +422,69 @@ export class SqliteStore {
   }
 
   appendAudit(event: AuditEvent): void {
-    this.db.prepare('INSERT INTO audit_events(id,request_id,event_type,actor_id,event_json,at) VALUES (?,?,?,?,?,?)').run(
-      event.id, event.requestId, event.eventType, event.actorId, JSON.stringify(event), event.at,
-    );
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      this.appendAuditInternal(event);
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
   }
 
   listAudit(requestId: string): AuditEvent[] {
     const rows = this.db.prepare('SELECT event_json FROM audit_events WHERE request_id=? ORDER BY seq').all(requestId) as any[];
     return rows.map((r) => JSON.parse(r.event_json));
+  }
+
+  getAuditHead(): AuditIntegrityHead | null {
+    const row = this.db.prepare(`SELECT seq, event_digest FROM audit_integrity ORDER BY seq DESC LIMIT 1`).get() as
+      | { seq: number; event_digest: string }
+      | undefined;
+    return row ? { sequence: row.seq, digest: row.event_digest } : null;
+  }
+
+  getAuditDigestAtSequence(sequence: number): string | null {
+    const row = this.db.prepare('SELECT event_digest FROM audit_integrity WHERE seq=?').get(sequence) as { event_digest: string } | undefined;
+    return row?.event_digest ?? null;
+  }
+
+  verifyAuditChain(): AuditIntegrityHead | null {
+    const rows = this.db.prepare(`SELECT e.seq, e.id, e.event_json, i.prev_digest, i.event_digest
+      FROM audit_events e LEFT JOIN audit_integrity i ON i.seq=e.seq AND i.event_id=e.id
+      ORDER BY e.seq`).all() as Array<{
+        seq: number;
+        id: string;
+        event_json: string;
+        prev_digest: string | null;
+        event_digest: string | null;
+      }>;
+    const integrityCount = Number((this.db.prepare('SELECT COUNT(*) AS count FROM audit_integrity').get() as { count: number | bigint }).count);
+    if (integrityCount !== rows.length) throw new Error('AUDIT_INTEGRITY_ROW_COUNT_MISMATCH');
+
+    let previousDigest: string | null = null;
+    for (const row of rows) {
+      if (!row.event_digest) throw new Error(`AUDIT_INTEGRITY_MISSING:${row.seq}`);
+      if (row.prev_digest !== previousDigest) throw new Error(`AUDIT_CHAIN_PREVIOUS_MISMATCH:${row.seq}`);
+      const expected = auditDigest(row.seq, row.id, row.event_json, previousDigest);
+      if (row.event_digest !== expected) throw new Error(`AUDIT_CHAIN_DIGEST_MISMATCH:${row.seq}`);
+      previousDigest = expected;
+    }
+    return rows.length === 0 || previousDigest === null
+      ? null
+      : { sequence: rows.at(-1)!.seq, digest: previousDigest };
+  }
+
+  saveAuditCheckpoint(checkpoint: StoredAuditCheckpoint): void {
+    const headDigest = this.getAuditDigestAtSequence(checkpoint.sequence);
+    if (!headDigest || headDigest !== checkpoint.headDigest) throw new Error('AUDIT_CHECKPOINT_HEAD_MISMATCH');
+    this.db.prepare(`INSERT INTO audit_checkpoints(audit_sequence,head_digest,checkpoint_json,created_at)
+      VALUES (?,?,?,?)`).run(checkpoint.sequence, checkpoint.headDigest, JSON.stringify(checkpoint), checkpoint.createdAt);
+  }
+
+  listAuditCheckpoints(): StoredAuditCheckpoint[] {
+    const rows = this.db.prepare('SELECT checkpoint_json FROM audit_checkpoints ORDER BY seq').all() as Array<{ checkpoint_json: string }>;
+    return rows.map((row) => JSON.parse(row.checkpoint_json) as StoredAuditCheckpoint);
   }
 
   consumeApproved(args: {
@@ -413,17 +511,52 @@ export class SqliteStore {
       this.db.prepare('INSERT INTO grants(execution_id,request_id,grant_json) VALUES (?,?,?)').run(
         args.executionId, args.requestId, JSON.stringify(args.grant),
       );
-      if (args.auditEvent) {
-        this.db.prepare('INSERT INTO audit_events(id,request_id,event_type,actor_id,event_json,at) VALUES (?,?,?,?,?,?)').run(
-          args.auditEvent.id, args.auditEvent.requestId, args.auditEvent.eventType, args.auditEvent.actorId, JSON.stringify(args.auditEvent), args.auditEvent.at,
-        );
-      }
+      if (args.auditEvent) this.appendAuditInternal(args.auditEvent);
       this.db.exec('COMMIT');
       return { grant: args.grant, reused: false };
     } catch (error) {
       this.db.exec('ROLLBACK');
       throw error;
     }
+  }
+
+  private initializeAuditIntegrity(): void {
+    const eventCount = Number((this.db.prepare('SELECT COUNT(*) AS count FROM audit_events').get() as { count: number | bigint }).count);
+    const integrityCount = Number((this.db.prepare('SELECT COUNT(*) AS count FROM audit_integrity').get() as { count: number | bigint }).count);
+    if (eventCount > 0 && integrityCount === 0) {
+      this.db.exec('BEGIN IMMEDIATE');
+      try {
+        const rows = this.db.prepare('SELECT seq,id,event_json FROM audit_events ORDER BY seq').all() as Array<{ seq: number; id: string; event_json: string }>;
+        let previousDigest: string | null = null;
+        for (const row of rows) {
+          const digest = auditDigest(row.seq, row.id, row.event_json, previousDigest);
+          this.db.prepare('INSERT INTO audit_integrity(seq,event_id,prev_digest,event_digest) VALUES (?,?,?,?)').run(
+            row.seq, row.id, previousDigest, digest,
+          );
+          previousDigest = digest;
+        }
+        this.db.exec('COMMIT');
+      } catch (error) {
+        this.db.exec('ROLLBACK');
+        throw error;
+      }
+    } else if (eventCount !== integrityCount) {
+      throw new Error('AUDIT_INTEGRITY_ROW_COUNT_MISMATCH');
+    }
+    this.verifyAuditChain();
+  }
+
+  private appendAuditInternal(event: AuditEvent): void {
+    const eventJson = JSON.stringify(event);
+    const previous = this.getAuditHead();
+    const inserted = this.db.prepare('INSERT INTO audit_events(id,request_id,event_type,actor_id,event_json,at) VALUES (?,?,?,?,?,?)').run(
+      event.id, event.requestId, event.eventType, event.actorId, eventJson, event.at,
+    );
+    const sequence = Number(inserted.lastInsertRowid);
+    const digest = auditDigest(sequence, event.id, eventJson, previous?.digest ?? null);
+    this.db.prepare('INSERT INTO audit_integrity(seq,event_id,prev_digest,event_digest) VALUES (?,?,?,?)').run(
+      sequence, event.id, previous?.digest ?? null, digest,
+    );
   }
 
   private ensureClientColumn(name: string, definition: string): void {
