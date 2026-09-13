@@ -150,3 +150,39 @@ test('HAA-only ceremony E2E separates APPROVE, REJECT and UNKNOWN authority effe
   await f.server.close();
   f.store.close();
 });
+
+test('actual request TTL persists EXPIRED and remains distinct from local UNKNOWN', () => {
+  const f = fixture();
+  const createdAt = new Date('2026-09-13T07:00:00Z');
+  f.app.createApprovalRequest({
+    apiKey: 'agent-w8-secret',
+    action,
+    approverPrincipalId: 'human-w8',
+    executorAudience: 'executor-w8',
+    requestId: 'w8-expired',
+    ttlMs: 1000,
+    now: createdAt,
+  });
+
+  const localOutcome = unknownCeremonyResult('w8-expired', 'LOCAL_TIMEOUT');
+  assert.equal(localOutcome.outcome, 'UNKNOWN');
+  assert.equal(f.store.getRequest('w8-expired')?.state, 'PENDING');
+
+  const expired = f.app.getRequest('human-w8-secret', 'w8-expired', new Date(createdAt.getTime() + 2000));
+  assert.equal(expired.state, 'EXPIRED');
+  assert.deepEqual(f.app.listAudit('human-w8-secret', 'w8-expired').map((event) => event.eventType), ['REQUESTED', 'EXPIRED']);
+  assert.equal(f.app.listAudit('human-w8-secret', 'w8-expired').at(-1)?.details?.reason, 'REQUEST_TTL');
+
+  assert.throws(() => f.app.authorizeAndConsume({
+    apiKey: 'executor-w8-secret',
+    requestId: 'w8-expired',
+    executionId: 'w8-exec-expired',
+    actualAction: action,
+    actualState: { version: 'v1' },
+    now: new Date(createdAt.getTime() + 3000),
+  }), /APPROVAL_EXPIRED/);
+  assert.ok(f.store.verifyAuditChain());
+
+  await f.server.close();
+  f.store.close();
+});
