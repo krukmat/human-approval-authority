@@ -53,7 +53,7 @@ tasks:
   - {id: W7-T05, wave: W7, title: "Final cross-model security/architecture review", depends_on: [W7-T01, W7-T02, W7-T03], status: READY_FOR_EXTERNAL_REVIEW}
   - {id: W7-T06, wave: W7, title: "Runtime API schemas and bounded inputs", depends_on: [W2-T09, W7-T01], status: DONE}
   - {id: W7-T07, wave: W7, title: "Deterministic dependency and build chain", depends_on: [W7-T02, W7-T03], status: READY}
-  - {id: W7-T08, wave: W7, title: "Client credential lifecycle and role separation", depends_on: [W2-T02, W2-T08, W7-T01], status: READY}
+  - {id: W7-T08, wave: W7, title: "Client credential lifecycle and role separation", depends_on: [W2-T02, W2-T08, W7-T01], status: DONE}
   - {id: W7-T09, wave: W7, title: "Authority key ring and rotation", depends_on: [W1-T04, W1-T06, W7-T01], status: READY}
   - {id: W7-T10, wave: W7, title: "Network edge production profile", depends_on: [W7-T02, W7-T06], status: READY}
   - {id: W7-T11, wave: W7, title: "Audit tamper-evidence", depends_on: [W2-T08, W7-T09], status: FUTURE}
