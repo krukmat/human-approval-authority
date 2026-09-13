@@ -162,7 +162,12 @@ export class HaaApplication {
     if (authenticator.principalId !== request.intent.approverPrincipalId) throw new Error('AUTHENTICATOR_PRINCIPAL_MISMATCH');
     const verifier = this.verifiers.get(args.evidence.type);
     if (!verifier) throw new Error('UNSUPPORTED_EVIDENCE_TYPE');
-    const verified = verifier.verify({ evidence: args.evidence, challenge, authenticator, now: args.now });
+    const verified = verifier.verify({
+      evidence: args.evidence,
+      challenge,
+      authenticator,
+      ...(args.now ? { now: args.now } : {}),
+    });
     if (!this.store.consumeChallenge(args.evidence.challengeDigest)) throw new Error('CHALLENGE_REPLAY');
     assertTransition('PENDING', 'APPROVED');
     if (!this.store.transitionRequest(request.id, 'PENDING', 'APPROVED', (args.now ?? new Date()).toISOString())) throw new Error('CONCURRENT_APPROVAL');
@@ -173,7 +178,7 @@ export class HaaApplication {
       evidence: verified,
       expiresAt: request.intent.expiresAt,
       signer: this.signer,
-      now: args.now,
+      ...(args.now ? { now: args.now } : {}),
     });
     this.store.saveReceipt(receipt);
     this.store.appendAudit(this.audit({ requestId: request.id, eventType: 'APPROVED', actorId: verified.principalId, actionDigest: request.actionDigest, at: args.now ?? new Date(), details: { authenticatorId: verified.authenticatorId } }));
@@ -202,7 +207,7 @@ export class HaaApplication {
       actionDigest: request.actionDigest,
       executorAudience: executorId,
       signer: this.signer,
-      now: args.now,
+      ...(args.now ? { now: args.now } : {}),
     });
     const at = args.now ?? new Date();
     const result = this.store.consumeApproved({
