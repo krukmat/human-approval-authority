@@ -11,8 +11,18 @@ struct VerifiedChallenge {
     let digest: String
 }
 
+func parseISO8601(_ value: String) -> Date? {
+    let fractional = ISO8601DateFormatter()
+    fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let date = fractional.date(from: value) { return date }
+
+    let standard = ISO8601DateFormatter()
+    standard.formatOptions = [.withInternetDateTime]
+    return standard.date(from: value)
+}
+
 func isChallengeExpired(_ challenge: VerifiedChallenge, now: Date = Date()) -> Bool {
-    guard let expiresAt = ISO8601DateFormatter().date(from: challenge.payload.expiresAt) else { return true }
+    guard let expiresAt = parseISO8601(challenge.payload.expiresAt) else { return true }
     return expiresAt <= now
 }
 
