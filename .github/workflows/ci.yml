@@ -11,6 +11,29 @@ jobs:
       - run: npm test
       - run: npx tsc --noEmit
 
+  container-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build container
+        run: docker build -t haa-ci .
+      - name: Start container
+        run: |
+          docker run -d --name haa-ci-run -p 127.0.0.1:8787:8787 -e HAA_DEV_BOOTSTRAP=1 haa-ci
+      - name: Wait for health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8787/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs haa-ci-run
+          exit 1
+      - name: Cleanup
+        if: always()
+        run: docker rm -f haa-ci-run || true
+
   macos-approver-compile:
     runs-on: macos-latest
     steps:
