@@ -37,15 +37,47 @@ const request = await haa.requestApproval({
 ## Authorize exact execution
 
 ```ts
+const executionId = crypto.randomUUID();
 const grant = await haa.authorize({
   requestId: request.id,
-  executionId: crypto.randomUUID(),
+  executionId,
   actualAction: action,
   actualState: { version: 'v42' },
 });
 ```
 
 The executor must treat `ExecutionGrant` as the execution authority. `ApprovalReceipt` is audit evidence and is not a bearer capability.
+
+## Verify a detached ExecutionGrant
+
+When a grant reaches the executor through an untrusted intermediary, verify it locally before treating it as authority:
+
+```ts
+import { verifyExecutionGrant } from '@haa/sdk';
+
+const authorityKeys = await haa.getAuthorityKeys();
+
+verifyExecutionGrant({
+  grant,
+  authorityKeys,
+  expectedRequestId: request.id,
+  expectedExecutionId: executionId,
+  expectedActionDigest: request.actionDigest,
+  expectedExecutorAudience: 'executor-prod',
+});
+```
+
+Detached verification fails closed on:
+
+- unsupported grant schema or signature algorithm;
+- unknown `authorityKeyId`;
+- key/algorithm mismatch;
+- invalid signature or signed-field mutation;
+- request, execution, action-digest or executor-audience mismatch;
+- expired grant;
+- unexpected fields in the frozen `haa.execution-grant.v1` shape.
+
+`getAuthorityKeys()` returns the public authority key ring, including retained `RETIRED` public keys. This allows historical grants to remain cryptographically verifiable after HAA rotates to a new ACTIVE signing key.
 
 ## Errors
 
@@ -64,6 +96,8 @@ try {
 ```
 
 `code` preserves HAA's machine-readable failure string such as `UNAUTHORIZED`, `ACTION_DIGEST_MISMATCH`, `STALE_APPROVAL` or `REQUEST_NOT_APPROVED:CONSUMED`.
+
+Detached grant failures throw `HaaGrantVerificationError` with a stable verification error code.
 
 ## Compatibility
 
