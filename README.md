@@ -28,6 +28,8 @@ ExecutionGrant → bounded Executor
 
 The HAA core never handles fingerprint images/templates and contains no Apple/ESP32-specific policy logic.
 
+`user-verified-device-bound` describes the supported authenticator path and enrolled device-bound key behavior. HAA v1 does **not** independently perform Apple Secure Enclave/platform attestation; see `docs/AUTHENTICATOR-ASSURANCE.md`.
+
 ## Current status
 
 - W0–W2 foundation/core/service: DONE.
@@ -35,8 +37,10 @@ The HAA core never handles fingerprint images/templates and contains no Apple/ES
 - W4 MCP/requester/executor scenario: DONE; real agent → Touch ID → bounded executor gate passed.
 - W5/W6 hardware: DEFERRED / not current work.
 - W7 protocol freeze, self-host package and publishable TypeScript SDK: DONE.
+- W7 software production hardening: ACTIVE.
 - W7 independent/cross-model security review: READY_FOR_EXTERNAL_REVIEW after first-party findings were fixed.
-- W8 DubBridge/product integrations: FUTURE.
+- W8 universal ceremony semantics: PLANNED / HAA-only.
+- Product-specific integrations: PARKED.
 
 CI covers runtime security tests, publishable package checks, strict production typecheck, Docker build/health smoke, MCP stdio surface and macOS compilation. The physical Mac gate additionally validates Secure Enclave enrollment, trusted presentation and Touch ID approval.
 
@@ -79,19 +83,21 @@ npm run validate:agent-macos
 
 HAA is suitable for internal pilot/integration work under its documented trust assumptions. It is **not yet presented as an Internet-exposed/compliance-ready production system**.
 
-The current review fixed requester self-approval, production exposure of the software-only test verifier and cross-client request/audit visibility. Residual hardening is documented in `docs/SECURITY-REVIEW-V1.md`.
+The current review fixed requester self-approval, production exposure of the software-only test verifier and cross-client request/audit visibility. Active hardening is tracked in `docs/HAA-ACTIVE-ROADMAP.md` and `tasks/manifest.yaml`.
 
 ## Project control
 
 - Architecture: `docs/ARCHITECTURE.md`
 - Protocol v1: `docs/PROTOCOL-V1.md`
 - Security invariants: `docs/SECURITY.md`
+- Authenticator assurance: `docs/AUTHENTICATOR-ASSURANCE.md`
 - Security review: `docs/SECURITY-REVIEW-V1.md`
+- Active roadmap: `docs/HAA-ACTIVE-ROADMAP.md`
 - Self-hosting: `docs/SELF-HOSTING.md`
 - Current status: `docs/STATUS.md`
 - Hardware decision: `docs/VALUE-GATE.md`
-- DubBridge future integration: `docs/DUBBRIDGE-INTEGRATION-BACKLOG.md`
+- Parked product integration notes: `docs/DUBBRIDGE-INTEGRATION-BACKLOG.md`
 - Dependency graph/status: `tasks/manifest.yaml`
 - Agent working contract: `AGENTS.md`
 
-Hardware is deliberately not the current execution priority. Resume W5 only through an explicit product-priority decision.
+Hardware and product-specific integrations are deliberately not the current execution priority.
