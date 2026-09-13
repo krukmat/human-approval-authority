@@ -42,13 +42,19 @@ const grant = await client.authorize({
   actualState: { version: resource.version },
 });
 
+const executedVersion = `executed:${executionId}`;
+if (resource.version === executedVersion) {
+  console.log(JSON.stringify({ grant, resource, reused: true }, null, 2));
+  process.exit(0);
+}
+
 const next: ResourceState = {
   ...resource,
-  version: `executed:${executionId}`,
+  version: executedVersion,
   lastOperation: operation,
 };
 const temporaryPath = join(dirname(resourcePath), `.haa-resource-${randomUUID()}.tmp`);
 await writeFile(temporaryPath, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
 await rename(temporaryPath, resourcePath);
 
-console.log(JSON.stringify({ grant, resource: next }, null, 2));
+console.log(JSON.stringify({ grant, resource: next, reused: false }, null, 2));
