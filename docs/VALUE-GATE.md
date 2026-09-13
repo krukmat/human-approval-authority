@@ -1,54 +1,88 @@
 # W4-T06 — Hardware Value Gate
 
-Status: **PENDING W4-T05 local validation**
+Status: **PASS — W5 POC AUTHORIZED**
+
+Decision date: **2026-09-13**
 
 This gate decides whether the DIY hardware authenticator subplan (W5/W6) is worth implementing. It is deliberately separate from the question of whether HAA itself works.
 
 ## Prerequisite evidence
 
-The gate cannot be evaluated until `npm run validate:agent-macos` ends with:
+`npm run validate:agent-macos` completed successfully on a real Apple Silicon Mac with Touch ID and ended with:
 
 ```text
 PASS W4-T05: real MCP agent → human Touch ID → bounded executor scenario
 ```
 
-That run must demonstrate all of the following:
+The run demonstrated all required properties:
 
-- an agent can request approval through the bounded MCP surface;
-- the external executor cannot act while the request is PENDING;
-- a human approves signed, structured action claims using Touch ID / Secure Enclave;
-- the exact action receives an ExecutionGrant and is applied once;
-- a retry with the same execution ID is idempotent after resource mutation;
-- a different execution ID is denied after consumption;
-- the agent can observe final status but has no self-approval or generic execution tool;
-- audit contains exactly one CONSUMED event.
+- an agent requested approval through the bounded MCP surface;
+- the external executor was blocked while the request was PENDING and the resource remained unchanged;
+- a human approved signed, structured action claims using Touch ID / Secure Enclave;
+- the exact action received an ExecutionGrant and was applied once;
+- retry with the same execution ID was idempotent after resource mutation;
+- a different execution ID was denied after consumption;
+- the agent observed final CONSUMED status without self-approval or generic execution capability;
+- audit contained exactly one CONSUMED event.
 
-## Hardware-value criteria
+The successful W4-T05 scenario also subsumes the W3-T06 Apple end-to-end gate.
 
-After W4-T05 passes, score each property `0 = no value`, `1 = useful`, `2 = material requirement`.
+## Hardware-value scoring
 
-| Property | What hardware adds | Score |
-|---|---|---:|
-| Host separation | Approval display/signing can remain trustworthy even if the agent host is treated as untrusted transport | TBD |
-| Dedicated trusted display | A small independent screen renders only HAA-signed display claims | TBD |
-| Portability/vendor independence | Approval endpoint can move across hosts without depending on Apple hardware | TBD |
-| Physical approval boundary | High-risk actions have a visible, dedicated physical human gate | TBD |
+Score: `0 = no value`, `1 = useful`, `2 = material requirement`.
 
-## Decision rule
+| Property | What hardware adds | Score | Rationale |
+|---|---|---:|---|
+| Host separation | Approval display/signing can remain trustworthy even if the agent host is treated as untrusted transport | **2** | This is the primary hardware thesis. A dedicated terminal removes the approver UI/signing key from the workstation or host running/transporting the agent action. |
+| Dedicated trusted display | A small independent screen renders only HAA-signed display claims | **2** | For high-risk agent actions, an independent renderer materially improves the human trust boundary compared with a UI on the same host as the agent/executor tooling. |
+| Portability/vendor independence | Approval endpoint can move across hosts without depending on Apple hardware | **1** | Useful for multi-host and non-Apple deployment, but not required to prove the current HAA product. |
+| Physical approval boundary | High-risk actions have a visible, dedicated physical human gate | **2** | A separate terminal makes the approval ceremony physically distinct from the agent host and is valuable for actions such as deploy/merge/external-operation approvals. |
 
-- **PASS:** W4-T05 passes **and** at least one property scores `2`, with a concrete target workflow that benefits from it.
-- **DEFER:** HAA works, but no hardware property is currently material. Keep W5/W6 blocked and continue with software packaging/integrations when their dependencies permit.
-- **FAIL:** W4-T05 exposes a core protocol/enforcement flaw. Fix the software architecture before reconsidering hardware.
+## Concrete target workflow
 
-A PASS authorizes W5 only. It does not pre-authorize W6 hardening decisions or hardware purchases beyond the POC BOM.
+Initial hardware POC target:
+
+```text
+Agent requests a high-risk deployment/merge-style action
+        ↓
+HAA issues a signed, exact-action challenge
+        ↓ USB transport only
+Dedicated terminal verifies challenge signature
+        ↓
+Dedicated display renders trusted signed claims
+        ↓
+Human locally verifies and approves
+        ↓
+Terminal emits signed ApprovalEvidence
+        ↓
+HAA authorizeAndConsume → ExecutionGrant → bounded executor
+```
+
+The POC is successful only if the terminal adds this independent trust boundary without changing HAA core semantics.
+
+## Decision
+
+**PASS.** W4-T05 passed and multiple hardware properties score `2` for a concrete high-risk agentic workflow.
+
+This PASS authorizes **W5 POC only**.
+
+It does **not** pre-authorize:
+
+- W6 hardening;
+- secure-element integration;
+- production claims;
+- certification claims;
+- purchase decisions beyond the minimal POC BOM.
+
+W6 remains blocked until W5-T07 passes.
 
 ## Explicit non-arguments for PASS
 
-These are not sufficient reasons to build hardware:
+These are not reasons for the decision:
 
 - fingerprint scanning is interesting;
 - DIY hardware is visually differentiated;
 - a secure element sounds safer;
 - the terminal is assumed to be more secure than a Mac Secure Enclave.
 
-The DIY terminal exists only if its separate physical trust boundary creates measurable workflow value.
+The DIY terminal is authorized because its separate physical trust boundary creates workflow value that the Mac path cannot fully provide.
