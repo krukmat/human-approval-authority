@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createEphemeralSigner, challengeDigest } from '../packages/core/src/index.ts';
+import { createEphemeralSigner, challengeDigest, GenericSignedEvidenceVerifier } from '../packages/core/src/index.ts';
 import { SqliteStore } from '../packages/persistence-sqlite/src/index.ts';
 import { HaaApplication } from '../apps/haa-server/src/application.ts';
 import type { ActionSpec, ApprovalEvidence } from '../packages/protocol/src/index.ts';
@@ -9,7 +9,11 @@ test('same executionId returns the original grant after resource state changed',
   const store = new SqliteStore(':memory:');
   const authority = createEphemeralSigner('authority-idempotency');
   const humanKey = createEphemeralSigner('human-idempotency');
-  const app = new HaaApplication({ store, authoritySigner: authority });
+  const app = new HaaApplication({
+    store,
+    authoritySigner: authority,
+    evidenceVerifiers: [new GenericSignedEvidenceVerifier('test-key', 'presence')],
+  });
   app.registerClient('agent', 'agent-secret');
   app.registerClient('human', 'human-secret');
   app.registerClient('executor', 'executor-secret');
