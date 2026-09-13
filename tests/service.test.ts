@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createEphemeralSigner, challengeDigest } from '../packages/core/src/index.ts';
+import { createEphemeralSigner, challengeDigest, GenericSignedEvidenceVerifier } from '../packages/core/src/index.ts';
 import { SqliteStore } from '../packages/persistence-sqlite/src/index.ts';
 import { HaaApplication } from '../apps/haa-server/src/application.ts';
 import type { ActionSpec, ApprovalEvidence } from '../packages/protocol/src/index.ts';
@@ -9,10 +9,15 @@ function fixture() {
   const store = new SqliteStore(':memory:');
   const authority = createEphemeralSigner('authority-1');
   const humanKey = createEphemeralSigner('human-key');
-  const app = new HaaApplication({ store, authoritySigner: authority });
+  const app = new HaaApplication({
+    store,
+    authoritySigner: authority,
+    evidenceVerifiers: [new GenericSignedEvidenceVerifier('test-key', 'presence')],
+  });
   app.registerClient('agent-a', 'agent-secret');
   app.registerClient('human-a', 'human-secret');
   app.registerClient('executor-a', 'executor-secret');
+  app.registerClient('outsider-a', 'outsider-secret');
   app.registerAuthenticator('human-secret', {
     id: 'auth-human-a', principalId: 'human-a', type: 'test-key', publicKeyPem: humanKey.publicKeyPem, signatureAlgorithm: humanKey.algorithm,
   });
@@ -93,5 +98,23 @@ test('wrong executor audience is denied', () => {
   f.app.registerClient('other-executor', 'other-secret');
   approve(f);
   assert.throws(() => f.app.authorizeAndConsume({ apiKey: 'other-secret', requestId: 'req-1', executionId: 'exec-x', actualAction: f.action, actualState: { version: 'v1' } }), /WRONG_EXECUTOR_AUDIENCE/);
+  f.store.close();
+});
+
+test('requester cannot nominate itself as human approver', () => {
+  const f = fixture();
+  assert.throws(() => f.app.createApprovalRequest({
+    apiKey: 'agent-secret', action: f.action, approverPrincipalId: 'agent-a', executorAudience: 'executor-a', requestId: 'self-approval',
+  }), /SELF_APPROVAL_FORBIDDEN/);
+  f.store.close();
+});
+
+test('non-participants cannot read request or audit metadata', () => {
+  const f = fixture();
+  const { request } = approve(f);
+  assert.throws(() => f.app.getRequest('outsider-secret', request.id), /FORBIDDEN/);
+  assert.throws(() => f.app.listAudit('outsider-secret', request.id), /FORBIDDEN/);
+  assert.equal(f.app.getRequest('human-secret', request.id).id, request.id);
+  assert.equal(f.app.getRequest('executor-secret', request.id).id, request.id);
   f.store.close();
 });
