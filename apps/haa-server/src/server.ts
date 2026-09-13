@@ -2,7 +2,10 @@ import { SqliteStore } from '../../../packages/persistence-sqlite/src/index.ts';
 import { HaaApplication } from './application.ts';
 import { buildHttpServer } from './http.ts';
 import { loadOrCreateAuthorityKeyRing } from './authority.ts';
-import { resolveNetworkBinding } from './network.ts';
+import { assertSafeDevelopmentBootstrap, resolveNetworkBinding } from './network.ts';
+
+const binding = resolveNetworkBinding();
+assertSafeDevelopmentBootstrap(binding);
 
 const dbPath = process.env.HAA_DB_PATH ?? './haa.db';
 const store = new SqliteStore(dbPath);
@@ -28,6 +31,5 @@ if (process.env.HAA_DEV_BOOTSTRAP === '1') {
   app.registerClient(process.env.HAA_EXECUTOR_ID ?? 'executor-dev', process.env.HAA_EXECUTOR_KEY ?? 'executor-dev-secret', ['EXECUTOR']);
 }
 
-const binding = resolveNetworkBinding();
 const server = buildHttpServer(app, { authorityKeys: () => authorityKeyRing.listPublicKeys() });
 await server.listen({ port: binding.port, host: binding.host });
