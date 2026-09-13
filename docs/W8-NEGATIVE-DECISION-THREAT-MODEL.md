@@ -4,53 +4,63 @@ Status: FROZEN FOR INITIAL IMPLEMENTATION
 
 ## Security question
 
-How can HAA record an explicit human rejection without requiring Touch ID while preventing an ordinary requester/agent from fabricating the claim that the human rejected an action?
+How can HAA terminate every non-approved ceremony as REJECT without requiring Touch ID for the negative path, while preventing a requester/agent from fabricating a trusted rejection claim?
 
 ## Assurance boundary
 
-Positive approval and explicit rejection deliberately have different assurance levels.
+Positive approval and negative terminal outcomes deliberately have different assurance levels.
 
 ### Positive approval
 
 Positive approval is authority-granting and therefore requires strong authenticator evidence. On macOS the existing path uses a Secure Enclave key released after Touch ID user verification.
 
-### Explicit rejection
+### Negative terminal outcome
 
-Explicit rejection grants no capability and is fail-closed. Initial HAA v1+W8 therefore does **not** require biometric proof for a rejection.
+REJECT grants no capability and is fail-closed. HAA therefore does **not** require biometric proof for rejection.
 
 The provenance claim is limited to:
 
-> An authenticated APPROVER client, representing the request's configured approver principal, explicitly rejected this exact active challenge through the trusted approver channel.
+> An authenticated APPROVER client, representing the request's configured approver principal, terminated this exact active challenge with the recorded reason.
 
-It must **not** be upgraded to claims such as:
+For `USER_ESCAPE` the additional assurance is:
 
-- biometric rejection;
-- Touch ID verified rejection;
-- Secure Enclave-signed rejection;
-- hardware-attested human rejection.
+> The trusted approver UI observed the explicit Escape negative action.
 
-## Initial provenance mechanism
+For all other reasons the assurance is only:
 
-A server-side reject request MUST contain:
+> The ceremony ended without a successful positive authorization and therefore failed closed.
+
+It must **not** be upgraded to claims such as biometric rejection, Touch ID verified rejection, Secure Enclave-signed rejection, or hardware-attested human rejection.
+
+## Rejection record
+
+The server-side reject request contains:
 
 - request ID from the route;
 - exact `challengeDigest`;
-- typed reason `USER_ESCAPE` for the initial macOS ceremony.
+- one typed reason:
+  - `USER_ESCAPE`
+  - `WINDOW_CLOSED`
+  - `TIMEOUT`
+  - `CHALLENGE_EXPIRED`
+  - `INTERACTION_ERROR`
 
-The server MUST verify:
+The server verifies:
 
 1. the API credential authenticates as a client with `APPROVER` role;
 2. authenticated actor equals `request.intent.approverPrincipalId`;
-3. request state is exactly `PENDING`;
+3. request state is exactly `PENDING` and request TTL has not elapsed;
 4. challenge exists and is not consumed;
 5. challenge belongs to the same request;
 6. challenge authenticator belongs to the same approver principal and is ACTIVE;
-7. challenge's signed payload binds the same request ID, intent digest and action digest;
+7. signed payload binds the same request ID, intent digest and action digest;
 8. challenge authority signature verifies through the authority key ring;
 9. rejection reason is in the supported allow-list;
-10. challenge consumption and `PENDING -> REJECTED` transition are atomic from the caller's perspective and cannot create execution authority.
+10. `CHALLENGE_EXPIRED` is accepted only if the challenge has actually expired;
+11. non-expiry reasons are denied after challenge expiry;
+12. challenge consumption and `PENDING -> REJECTED` transition cannot create execution authority.
 
-The resulting request audit event records at minimum:
+The resulting audit event records at minimum:
 
 ```json
 {
@@ -59,13 +69,14 @@ The resulting request audit event records at minimum:
   "details": {
     "challengeDigest": "sha256:...",
     "authenticatorId": "...",
-    "reason": "USER_ESCAPE",
-    "provenance": "authenticated-approver-channel"
+    "reason": "TIMEOUT",
+    "provenance": "authenticated-approver-channel",
+    "assurance": "fail-closed-terminal"
   }
 }
 ```
 
-The event participates in W7 audit tamper-evidence.
+For `USER_ESCAPE`, `assurance` is `explicit-human-negative-action`.
 
 ## Threats and controls
 
@@ -83,54 +94,61 @@ Threat: replaying a legitimate approver request against another approval.
 
 Control: exact request ID + challenge digest + signed payload binding are checked before transition.
 
+### Reason forgery
+
+Threat: a caller reports `USER_ESCAPE` after the challenge already expired or reports `CHALLENGE_EXPIRED` before it actually expired.
+
+Control: server validates challenge time against the requested reason. Reason semantics are not accepted solely from caller text.
+
 ### Replaying the same reject
 
 Threat: duplicate delivery or malicious replay.
 
-Control: the active challenge is consumed and the request becomes terminal `REJECTED`. A replay cannot create a second authority-bearing object and must fail closed/idempotently at the service boundary.
+Control: challenge is consumed and request becomes terminal `REJECTED`. Replays cannot create a second authority-bearing object.
 
-### Forged browser/window-close rejection
+### Window close / timeout falsely described as explicit human rejection
 
-Threat: absence of interaction is represented as a human refusal.
+Threat: operational fail-closed termination is overstated as proof that the human consciously chose Reject.
 
-Control: only the explicit Esc path sends a reject request. Window close, local timeout, crash, network failure, or lost response produce `UNKNOWN` locally and do not transition the server to `REJECTED`.
+Control: both map operationally to REJECT but retain their own reason and `fail-closed-terminal` assurance. Only `USER_ESCAPE` uses `explicit-human-negative-action`.
 
 ### Network attacker fabricates rejection
 
 Threat: attacker sends an APPROVER request.
 
-Control: authenticated API channel plus production network-edge TLS requirements. No rejection is accepted solely because a request originated from localhost or carried forwarded headers.
+Control: authenticated API channel plus production network-edge TLS requirements. No rejection is accepted solely because traffic originates from localhost or carries forwarded headers.
 
 ### Compromised approver credential
 
-Threat: theft of the approver API credential can produce explicit rejections.
+Threat: theft of the approver API credential can produce rejections.
 
-Control: credential expiry/rotation/disable from W7-T08; this is an accepted weaker assurance boundary than APPROVE. Rejection still cannot grant execution authority.
+Control: credential expiry/rotation/disable from W7-T08. This remains weaker assurance than APPROVE, but a forged negative decision cannot grant execution authority.
 
-### Compromised local process injects Esc
+### Compromised local process injects Esc or closes the window
 
-Threat: malware or accessibility automation triggers Escape in the trusted approver app.
+Threat: malware/accessibility automation forces a negative terminal result.
 
-Control: outside the initial threat model for negative decisions. The result remains fail-closed. If stronger non-repudiation of rejection becomes a requirement, introduce a separately versioned signed negative-decision mechanism rather than relabeling this one.
+Control: this remains fail-closed with respect to execution. If non-repudiable negative intent becomes a requirement, introduce a separately versioned signed negative-decision mechanism rather than relabeling the current assurance.
 
 ## Why not sign REJECT with the approval Secure Enclave key?
 
-Doing so would make rejection UX equivalent in cost to approval, undermine the explicit Esc requirement, and create misleading equivalence between capability-granting approval and capability-denying refusal.
+Doing so would make rejection UX equivalent in cost to approval and create misleading equivalence between capability-granting approval and capability-denying refusal.
 
-The initial product chooses asymmetric assurance intentionally:
+The product intentionally chooses asymmetric assurance:
 
 ```text
-APPROVE -> strong user verification -> may grant authority
-REJECT  -> authenticated explicit refusal -> grants no authority
-UNKNOWN -> no attributable decision -> grants no authority
+APPROVE                 -> strong user verification -> may grant authority
+REJECT / USER_ESCAPE    -> explicit negative UI action -> grants no authority
+REJECT / other reason   -> fail-closed terminal outcome -> grants no authority
 ```
 
 ## Acceptance invariants
 
 - requester credential alone cannot reject;
 - wrong approver cannot reject;
-- stale/wrong/consumed challenge cannot reject;
+- wrong/consumed challenge cannot reject;
+- challenge-expiry reason must match actual challenge expiry;
+- every non-approved terminal ceremony ends REJECTED;
 - reject cannot create receipt or grant;
-- explicit Esc is distinguishable from close/timeout/failure;
-- audit describes the assurance truthfully;
+- reason/assurance prevents overstating human intent;
 - no protocol-v1 signed schema is modified.
