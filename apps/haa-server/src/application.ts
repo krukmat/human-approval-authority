@@ -21,13 +21,20 @@ import {
   sha256,
   verifyChallengeAuthority,
   type EvidenceVerifier,
+  type SignatureAlgorithm,
   type Signer,
 } from '../../../packages/core/src/index.ts';
 import { SqliteStore, type ClientRole } from '../../../packages/persistence-sqlite/src/index.ts';
 
+export interface AuthorityVerificationKey {
+  algorithm: SignatureAlgorithm;
+  publicKeyPem: string;
+}
+
 export interface HaaApplicationOptions {
   store: SqliteStore;
   authoritySigner: Signer;
+  authorityKeyResolver?: (keyId: string) => AuthorityVerificationKey | null;
   profiles?: ActionProfileRegistry;
   evidenceVerifiers?: EvidenceVerifier[];
 }
@@ -37,10 +44,14 @@ export class HaaApplication {
   readonly signer: Signer;
   readonly profiles: ActionProfileRegistry;
   readonly verifiers = new Map<string, EvidenceVerifier>();
+  private readonly authorityKeyResolver: (keyId: string) => AuthorityVerificationKey | null;
 
   constructor(options: HaaApplicationOptions) {
     this.store = options.store;
     this.signer = options.authoritySigner;
+    this.authorityKeyResolver = options.authorityKeyResolver ?? ((keyId) => keyId === this.signer.keyId
+      ? { algorithm: this.signer.algorithm, publicKeyPem: this.signer.publicKeyPem }
+      : null);
     this.profiles = options.profiles ?? new ActionProfileRegistry();
     const defaults: EvidenceVerifier[] = [
       new GenericSignedEvidenceVerifier('apple-secure-enclave', 'user-verified-device-bound'),
@@ -161,7 +172,12 @@ export class HaaApplication {
     const storedChallenge = this.store.getChallenge(args.evidence.challengeDigest);
     if (!storedChallenge || storedChallenge.consumed) throw new Error('CHALLENGE_NOT_ACTIVE');
     const challenge = storedChallenge.challenge;
-    if (challenge.authorityKeyId !== this.signer.keyId || !verifyChallengeAuthority(challenge, this.signer.publicKeyPem)) throw new Error('INVALID_HAA_CHALLENGE_SIGNATURE');
+    const authorityKey = this.authorityKeyResolver(challenge.authorityKeyId);
+    if (!authorityKey
+      || authorityKey.algorithm !== challenge.signatureAlgorithm
+      || !verifyChallengeAuthority(challenge, authorityKey.publicKeyPem)) {
+      throw new Error('INVALID_HAA_CHALLENGE_SIGNATURE');
+    }
     const challengePayload = decodeChallengePayload(challenge);
     if (challengePayload.requestId !== request.id || challengePayload.intentDigest !== request.intentDigest || challengePayload.actionDigest !== request.actionDigest) {
       throw new Error('CHALLENGE_BINDING_MISMATCH');
