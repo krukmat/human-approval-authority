@@ -54,7 +54,7 @@ test('HTTP edge accepts a bounded valid approval request', async () => {
     url: '/v1/approval-requests',
     headers: { 'x-api-key': 'agent-secret' },
     payload: {
-      action: { schema: 'haa.action.v1', type: 'demo.action.v1', payload: { operation: 'deploy' } },
+      action: { schema: 'haa.action.v1', type: 'demo.action.v1', payload: { resource: 'production-service', operation: 'deploy' } },
       approverPrincipalId: 'human-a',
       executorAudience: 'executor-a',
       requestId: 'req-http-1',
