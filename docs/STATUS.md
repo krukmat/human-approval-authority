@@ -24,6 +24,22 @@ GitHub CI is green for the implemented cloud-testable surface:
 - Production TypeScript sources pass strict `tsc --noEmit`.
 - Idempotent retry after resource mutation returns the original grant while a different execution ID is rejected.
 - The external reference executor obtains an `ExecutionGrant` before mutating its bounded resource and does not reapply the side effect for the same execution ID.
+- macOS Swift package tests pass on a real macOS GitHub runner.
+- the app-like `HAAApprover.xcodeproj` wrapper compiles successfully on macOS with code signing disabled, validating the Xcode project and Swift/AppKit/LocalAuthentication integration.
+
+## macOS provisioning correction
+
+The first physical W4-T05 attempt reached Secure Enclave enrollment but failed with `OSStatus -34018` (`errSecMissingEntitlement`). The failure was caused by executing the approver as a standalone SwiftPM CLI, which cannot carry the provisioning profile required for the macOS Data Protection Keychain used by biometric key protection.
+
+The validation path now builds the same approver sources inside a minimal `HAAApprover.app` wrapper using Xcode automatic signing. Before enrollment, the helper verifies:
+
+- full Xcode is available;
+- an Apple Development team is selected or auto-detected;
+- an embedded provisioning profile is present;
+- the code signature verifies;
+- application identity and keychain access-group entitlements are present.
+
+The Secure Enclave implementation now uses `LAContext` instead of deprecated `kSecUseOperationPrompt`, explicitly targets the Data Protection Keychain for lookup/deletion, and the AppKit trusted UI is MainActor-isolated.
 
 ## Local physical gates
 
@@ -32,7 +48,7 @@ The remaining uncertainty is intentionally physical rather than architectural:
 1. `npm run validate:macos` validates the Secure Enclave / Touch ID ceremony end to end.
 2. `npm run validate:agent-macos` validates the complete agentic boundary: MCP requester → human Touch ID → bounded external executor.
 
-Both commands require a real macOS host with Touch ID and Secure Enclave. The validation authenticator key is device-bound; the approver CLI now supports explicit deletion so validation keys can be cleaned up after a run.
+Both commands require a real macOS host with Touch ID and Secure Enclave plus a locally provisioned Apple Development identity. The validation authenticator key is device-bound and is deleted after each run.
 
 ## Hardware boundary
 
