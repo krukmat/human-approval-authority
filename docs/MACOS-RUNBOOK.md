@@ -59,6 +59,23 @@ PASS W3-T06: Apple Secure Enclave / Touch ID end-to-end gate
 
 The scripts use a unique authenticator ID each run. Keys are device-bound and are not exported; the validation key and temporary server state are removed at the end.
 
+## W8-T09 final physical ceremony gate
+
+W8 adds the terminal ceremony invariant:
+
+```text
+Touch ID success       -> APPROVE
+Esc                    -> REJECT / USER_ESCAPE
+window close           -> REJECT / WINDOW_CLOSED
+timeout                -> REJECT / TIMEOUT
+challenge expiry       -> REJECT / CHALLENGE_EXPIRED
+terminal interaction   -> REJECT / INTERACTION_ERROR
+```
+
+Only the APPROVE path may produce positive evidence / receipt / execution authority. The negative paths do not require Touch ID and do not claim biometric rejection.
+
+W8-T09 must be run only after W7-T15 closes. The exact physical acceptance matrix and evidence fields are in `docs/W8-PHYSICAL-CEREMONY-GATE.md`.
+
 ## Requirements
 
 - macOS host with Secure Enclave and Touch ID configured.
