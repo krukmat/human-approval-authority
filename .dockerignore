@@ -1,0 +1,9 @@
+.git
+.github
+node_modules
+*.db
+.haa
+.DS_Store
+macos/haa-approver/.build
+macos/haa-approver-app/build
+firmware
