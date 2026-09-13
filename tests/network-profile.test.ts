@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveNetworkBinding } from '../apps/haa-server/src/network.ts';
+import { assertSafeDevelopmentBootstrap, resolveNetworkBinding } from '../apps/haa-server/src/network.ts';
 
 test('local profile defaults to loopback', () => {
   assert.deepEqual(resolveNetworkBinding({}), {
@@ -20,6 +20,18 @@ test('edge profile permits explicit non-loopback binding', () => {
     host: '0.0.0.0',
     port: 9443,
   });
+});
+
+test('development bootstrap is forbidden in edge profile unless explicitly overridden', () => {
+  const edge = resolveNetworkBinding({ HOST: '0.0.0.0', HAA_NETWORK_PROFILE: 'edge' });
+  assert.throws(() => assertSafeDevelopmentBootstrap(edge, { HAA_DEV_BOOTSTRAP: '1' }), /DEV_BOOTSTRAP_FORBIDDEN_IN_EDGE_PROFILE/);
+  assert.doesNotThrow(() => assertSafeDevelopmentBootstrap(edge, {
+    HAA_DEV_BOOTSTRAP: '1',
+    HAA_ALLOW_UNSAFE_DEV_BOOTSTRAP_EDGE: '1',
+  }));
+
+  const local = resolveNetworkBinding({ HAA_NETWORK_PROFILE: 'local' });
+  assert.doesNotThrow(() => assertSafeDevelopmentBootstrap(local, { HAA_DEV_BOOTSTRAP: '1' }));
 });
 
 test('invalid profile and port fail closed', () => {
