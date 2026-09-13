@@ -21,3 +21,10 @@ export function resolveNetworkBinding(env: NodeJS.ProcessEnv = process.env): Net
 
   return { profile, host, port };
 }
+
+export function assertSafeDevelopmentBootstrap(binding: NetworkBinding, env: NodeJS.ProcessEnv = process.env): void {
+  if (env.HAA_DEV_BOOTSTRAP !== '1') return;
+  if (binding.profile === 'edge' && env.HAA_ALLOW_UNSAFE_DEV_BOOTSTRAP_EDGE !== '1') {
+    throw new Error('DEV_BOOTSTRAP_FORBIDDEN_IN_EDGE_PROFILE');
+  }
+}
