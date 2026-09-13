@@ -1,7 +1,29 @@
 import { createPublicKey, verify as verifyCryptoSignature } from 'node:crypto';
-import type { ActionSpec, ApprovalRequest, ExecutionGrant } from '@haa/protocol';
+import type { ActionSpec, ApprovalRequest, ApprovalState, ExecutionGrant } from '@haa/protocol';
 
-export type { ActionSpec, ApprovalRequest, ExecutionGrant } from '@haa/protocol';
+export type { ActionSpec, ApprovalRequest, ApprovalState, ExecutionGrant } from '@haa/protocol';
+
+export type CeremonyOutcome = 'APPROVE' | 'REJECT' | 'UNKNOWN';
+export type RejectionReason = 'USER_ESCAPE';
+export type UnknownCeremonyReason =
+  | 'WINDOW_CLOSED'
+  | 'LOCAL_TIMEOUT'
+  | 'APP_TERMINATED'
+  | 'INTERACTION_ERROR'
+  | 'AUTHENTICATOR_UNAVAILABLE';
+
+export interface CeremonyResult {
+  outcome: CeremonyOutcome;
+  requestId: string;
+  reason?: RejectionReason | UnknownCeremonyReason;
+  state?: ApprovalState;
+}
+
+export interface RejectApprovalInput {
+  requestId: string;
+  challengeDigest: string;
+  reason?: RejectionReason;
+}
 
 export interface RequestApprovalInput {
   action: ActionSpec;
@@ -152,6 +174,10 @@ export function verifyExecutionGrant(input: VerifyExecutionGrantInput): Executio
   return grant;
 }
 
+export function unknownCeremonyResult(requestId: string, reason: UnknownCeremonyReason): CeremonyResult {
+  return { outcome: 'UNKNOWN', requestId, reason };
+}
+
 export class HaaApiError extends Error {
   readonly status: number;
   readonly code: string;
@@ -212,6 +238,16 @@ export class HaaClient {
 
   getApproval(requestId: string): Promise<ApprovalRequest> {
     return this.call(`/v1/approval-requests/${encodeURIComponent(requestId)}`);
+  }
+
+  rejectApproval(input: RejectApprovalInput): Promise<CeremonyResult> {
+    return this.call(`/v1/approval-requests/${encodeURIComponent(input.requestId)}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({
+        challengeDigest: input.challengeDigest,
+        reason: input.reason ?? 'USER_ESCAPE',
+      }),
+    });
   }
 
   authorize(input: AuthorizeInput): Promise<ExecutionGrant> {
