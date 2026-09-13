@@ -56,7 +56,6 @@ const authenticatorSchema = z.object({
   type: identifier,
   publicKeyPem: z.string().min(1).max(16 * 1024),
   signatureAlgorithm: z.enum(['Ed25519', 'ES256']),
-  revokedAt: z.never().optional(),
 }).strict();
 
 const challengeRequestSchema = z.object({ authenticatorId: identifier }).strict();
