@@ -31,14 +31,33 @@ export interface AuthorityVerificationKey {
   publicKeyPem: string;
 }
 
-export type RejectionReason = 'USER_ESCAPE';
+export type RejectionReason =
+  | 'USER_ESCAPE'
+  | 'WINDOW_CLOSED'
+  | 'TIMEOUT'
+  | 'CHALLENGE_EXPIRED'
+  | 'INTERACTION_ERROR';
+
+export type RejectionAssurance = 'explicit-human-negative-action' | 'fail-closed-terminal';
 
 export interface RejectionResult {
   outcome: 'REJECT';
   requestId: string;
   state: 'REJECTED';
+  challengeDigest: string;
   reason: RejectionReason;
+  rejectedAt: string;
+  provenance: 'authenticated-approver-channel';
+  assurance: RejectionAssurance;
 }
+
+const REJECTION_REASONS = new Set<RejectionReason>([
+  'USER_ESCAPE',
+  'WINDOW_CLOSED',
+  'TIMEOUT',
+  'CHALLENGE_EXPIRED',
+  'INTERACTION_ERROR',
+]);
 
 export interface HaaApplicationOptions {
   store: SqliteStore;
@@ -191,7 +210,7 @@ export class HaaApplication {
     if (request.state !== 'PENDING') throw new Error(`REQUEST_NOT_PENDING:${request.state}`);
     request = this.refreshRequestExpiry(request, now);
     if (request.state === 'EXPIRED') throw new Error('REQUEST_EXPIRED');
-    if (args.reason !== 'USER_ESCAPE') throw new Error('UNSUPPORTED_REJECTION_REASON');
+    if (!REJECTION_REASONS.has(args.reason)) throw new Error('UNSUPPORTED_REJECTION_REASON');
 
     const storedChallenge = this.store.getChallenge(args.challengeDigest);
     if (!storedChallenge || storedChallenge.consumed) throw new Error('CHALLENGE_NOT_ACTIVE');
@@ -207,7 +226,12 @@ export class HaaApplication {
     if (payload.requestId !== request.id || payload.intentDigest !== request.intentDigest || payload.actionDigest !== request.actionDigest) {
       throw new Error('CHALLENGE_BINDING_MISMATCH');
     }
-    if (new Date(payload.expiresAt).getTime() <= now.getTime()) throw new Error('CHALLENGE_EXPIRED');
+    const challengeExpired = new Date(payload.expiresAt).getTime() <= now.getTime();
+    if (args.reason === 'CHALLENGE_EXPIRED') {
+      if (!challengeExpired) throw new Error('CHALLENGE_NOT_EXPIRED');
+    } else if (challengeExpired) {
+      throw new Error('CHALLENGE_EXPIRED');
+    }
 
     const authenticator = this.store.getAuthenticator(payload.authenticatorId);
     if (!authenticator || authenticator.status !== 'ACTIVE') throw new Error('AUTHENTICATOR_NOT_ACTIVE');
@@ -216,6 +240,19 @@ export class HaaApplication {
     if (!this.store.consumeChallenge(args.challengeDigest)) throw new Error('CHALLENGE_REPLAY');
     assertTransition('PENDING', 'REJECTED');
     if (!this.store.transitionRequest(request.id, 'PENDING', 'REJECTED', now.toISOString())) throw new Error('CONCURRENT_REJECTION');
+    const assurance: RejectionAssurance = args.reason === 'USER_ESCAPE'
+      ? 'explicit-human-negative-action'
+      : 'fail-closed-terminal';
+    const result: RejectionResult = {
+      outcome: 'REJECT',
+      requestId: request.id,
+      state: 'REJECTED',
+      challengeDigest: args.challengeDigest,
+      reason: args.reason,
+      rejectedAt: now.toISOString(),
+      provenance: 'authenticated-approver-channel',
+      assurance,
+    };
     this.store.appendAudit(this.audit({
       requestId: request.id,
       eventType: 'REJECTED',
@@ -226,10 +263,11 @@ export class HaaApplication {
         challengeDigest: args.challengeDigest,
         authenticatorId: payload.authenticatorId,
         reason: args.reason,
-        provenance: 'authenticated-approver-channel',
+        provenance: result.provenance,
+        assurance,
       },
     }));
-    return { outcome: 'REJECT', requestId: request.id, state: 'REJECTED', reason: args.reason };
+    return result;
   }
 
   submitEvidence(args: { apiKey: string; evidence: ApprovalEvidence; now?: Date }) {
