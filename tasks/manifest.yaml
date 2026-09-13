@@ -26,12 +26,12 @@ tasks:
   - {id: W3-T03, wave: W3, title: "Signed package verification + trusted renderer", depends_on: [W3-T01, W1-T02, W1-T04], status: DONE_UNVALIDATED}
   - {id: W3-T04, wave: W3, title: "Touch ID-gated approval signature", depends_on: [W3-T02, W3-T03], status: DONE_UNVALIDATED}
   - {id: W3-T05, wave: W3, title: "Apple evidence verifier adapter", depends_on: [W2-T06, W3-T04], status: DONE}
-  - {id: W3-T06, wave: W3, title: "Apple end-to-end gate", depends_on: [W3-T05, W2-T09], status: BLOCKED}
+  - {id: W3-T06, wave: W3, title: "Apple end-to-end gate", depends_on: [W3-T05, W2-T09], status: READY_FOR_LOCAL_VALIDATION}
   - {id: W4-T01, wave: W4, title: "TypeScript requester SDK", depends_on: [W2-T09], status: DONE}
   - {id: W4-T02, wave: W4, title: "CLI approval requester", depends_on: [W4-T01], status: DONE}
-  - {id: W4-T03, wave: W4, title: "MCP adapter", depends_on: [W4-T01], status: DONE_UNVALIDATED}
+  - {id: W4-T03, wave: W4, title: "MCP adapter", depends_on: [W4-T01], status: DONE}
   - {id: W4-T04, wave: W4, title: "Reference executor + precondition enforcement", depends_on: [W2-T07, W4-T01], status: DONE}
-  - {id: W4-T05, wave: W4, title: "Real agent approval scenario", depends_on: [W3-T06, W4-T02, W4-T03, W4-T04], status: BLOCKED}
+  - {id: W4-T05, wave: W4, title: "Real agent approval scenario", depends_on: [W3-T06, W4-T02, W4-T03, W4-T04], status: READY_FOR_LOCAL_VALIDATION}
   - {id: W4-T06, wave: W4, title: "Value-gate decision record", depends_on: [W4-T05], status: BLOCKED}
   - {id: W5-T01, wave: W5, title: "Hardware BOM + firmware scaffold", depends_on: [W4-T06], status: BLOCKED}
   - {id: W5-T02, wave: W5, title: "Terminal package verification over USB", depends_on: [W5-T01, W1-T04], status: BLOCKED}
