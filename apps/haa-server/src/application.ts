@@ -23,7 +23,7 @@ import {
   type EvidenceVerifier,
   type Signer,
 } from '../../../packages/core/src/index.ts';
-import { SqliteStore } from '../../../packages/persistence-sqlite/src/index.ts';
+import { SqliteStore, type ClientRole } from '../../../packages/persistence-sqlite/src/index.ts';
 
 export interface HaaApplicationOptions {
   store: SqliteStore;
@@ -49,18 +49,27 @@ export class HaaApplication {
     for (const verifier of options.evidenceVerifiers ?? defaults) this.verifiers.set(verifier.type, verifier);
   }
 
-  registerClient(clientId: string, apiKey: string): void {
-    this.store.registerClient(clientId, sha256(apiKey));
+  registerClient(
+    clientId: string,
+    apiKey: string,
+    roles?: ClientRole[],
+    options: { expiresAt?: string; now?: Date; actorId?: string } = {},
+  ): void {
+    this.store.registerClient(clientId, sha256(apiKey), roles, {
+      ...(options.expiresAt !== undefined ? { expiresAt: options.expiresAt } : {}),
+      ...(options.now ? { now: options.now.toISOString() } : {}),
+      ...(options.actorId !== undefined ? { actorId: options.actorId } : {}),
+    });
   }
 
   authenticate(apiKey: string): string {
-    const id = this.store.authenticateClient(sha256(apiKey));
-    if (!id) throw new Error('UNAUTHORIZED');
-    return id;
+    const client = this.store.authenticateClient(sha256(apiKey));
+    if (!client) throw new Error('UNAUTHORIZED');
+    return client.id;
   }
 
   registerAuthenticator(apiKey: string, record: Omit<AuthenticatorRecord, 'schema' | 'status' | 'createdAt'>, now = new Date()): AuthenticatorRecord {
-    const actor = this.authenticate(apiKey);
+    const actor = this.authenticateAs(apiKey, 'APPROVER');
     if (actor !== record.principalId) throw new Error('PRINCIPAL_MISMATCH');
     const full: AuthenticatorRecord = {
       schema: 'haa.authenticator.v1',
@@ -73,7 +82,7 @@ export class HaaApplication {
   }
 
   revokeAuthenticator(apiKey: string, authenticatorId: string, now = new Date()): void {
-    const actor = this.authenticate(apiKey);
+    const actor = this.authenticateAs(apiKey, 'APPROVER');
     const record = this.store.getAuthenticator(authenticatorId);
     if (!record) throw new Error('AUTHENTICATOR_NOT_FOUND');
     if (record.principalId !== actor) throw new Error('FORBIDDEN');
@@ -90,7 +99,7 @@ export class HaaApplication {
     ttlMs?: number;
     now?: Date;
   }): ApprovalRequest {
-    const requesterId = this.authenticate(args.apiKey);
+    const requesterId = this.authenticateAs(args.apiKey, 'REQUESTER');
     if (requesterId === args.approverPrincipalId) throw new Error('SELF_APPROVAL_FORBIDDEN');
     const now = args.now ?? new Date();
     this.profiles.validate(args.action);
@@ -130,7 +139,7 @@ export class HaaApplication {
   }
 
   issueApprovalChallenge(args: { apiKey: string; requestId: string; authenticatorId: string; now?: Date }) {
-    const actor = this.authenticate(args.apiKey);
+    const actor = this.authenticateAs(args.apiKey, 'APPROVER');
     const request = this.mustRequest(args.requestId);
     if (actor !== request.intent.approverPrincipalId) throw new Error('FORBIDDEN');
     const auth = this.store.getAuthenticator(args.authenticatorId);
@@ -145,7 +154,7 @@ export class HaaApplication {
   }
 
   submitEvidence(args: { apiKey: string; evidence: ApprovalEvidence; now?: Date }) {
-    const actor = this.authenticate(args.apiKey);
+    const actor = this.authenticateAs(args.apiKey, 'APPROVER');
     const request = this.mustRequest(args.evidence.requestId);
     if (actor !== request.intent.approverPrincipalId) throw new Error('FORBIDDEN');
     if (request.state !== 'PENDING') throw new Error(`REQUEST_NOT_PENDING:${request.state}`);
@@ -193,7 +202,7 @@ export class HaaApplication {
     actualState?: Record<string, JsonValue>;
     now?: Date;
   }) {
-    const executorId = this.authenticate(args.apiKey);
+    const executorId = this.authenticateAs(args.apiKey, 'EXECUTOR');
     const request = this.mustRequest(args.requestId);
     if (request.intent.executorAudience !== executorId) throw new Error('WRONG_EXECUTOR_AUDIENCE');
 
@@ -237,6 +246,13 @@ export class HaaApplication {
     const request = this.mustRequest(requestId);
     this.assertParticipant(actor, request);
     return this.store.listAudit(requestId);
+  }
+
+  private authenticateAs(apiKey: string, role: ClientRole): string {
+    const client = this.store.authenticateClient(sha256(apiKey));
+    if (!client) throw new Error('UNAUTHORIZED');
+    if (!client.roles.includes(role)) throw new Error('FORBIDDEN');
+    return client.id;
   }
 
   private mustRequest(id: string): ApprovalRequest {
