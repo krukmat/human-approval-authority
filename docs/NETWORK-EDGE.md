@@ -32,6 +32,31 @@ HAA's Fastify listener intentionally does **not** enable `trustProxy`. `X-Forwar
 
 Rate limiting is currently an edge responsibility rather than an in-process HAA policy. This keeps the application deployment-neutral and allows the operator to apply controls consistently at the actual ingress boundary. Exposing the plain HAA listener directly to an untrusted network is unsupported.
 
+## Development bootstrap guard
+
+`HAA_DEV_BOOTSTRAP=1` provisions predictable development identities/credentials and is therefore a development-only mechanism.
+
+HAA refuses startup when both are true:
+
+```text
+HAA_NETWORK_PROFILE=edge
+HAA_DEV_BOOTSTRAP=1
+```
+
+unless the operator also supplies the deliberately unsafe override:
+
+```text
+HAA_ALLOW_UNSAFE_DEV_BOOTSTRAP_EDGE=1
+```
+
+That override exists only for controlled test environments. It must not be used as a production deployment pattern.
+
+The safe invariant is:
+
+```text
+edge + dev bootstrap + no unsafe override -> FAIL STARTUP
+```
+
 ## Body and input limits
 
 HAA enforces its own application limits even behind an edge:
@@ -65,6 +90,7 @@ Changing that publication to a public or LAN interface is an operator decision a
 ```text
 local profile + non-loopback bind -> FAIL
 edge profile + non-loopback bind  -> permitted, edge controls required
+edge profile + dev bootstrap      -> FAIL unless explicit unsafe override
 unknown profile                   -> FAIL
 ```
 
