@@ -22,22 +22,50 @@ ExecutionGrant → bounded Executor
 
 ## Authenticator paths
 
-- **macOS:** Touch ID-gated P-256 signing with a device-bound Secure Enclave key.
-- **DIY hardware (conditional):** XIAO ESP32-S3 + local fingerprint match + trusted display + protected signing key.
+- **macOS:** physically validated Touch ID-gated P-256 signing with a device-bound Secure Enclave key.
+- **DIY hardware:** authorized by the value gate but currently deferred by product priority.
 - Future authenticators plug into the evidence-verifier boundary without changing core execution semantics.
 
 The HAA core never handles fingerprint images/templates and contains no Apple/ESP32-specific policy logic.
 
 ## Current status
 
-- W0–W2: complete and CI validated.
-- W3 Apple implementation: complete; physical Touch ID validation ready on a real Mac.
-- W4 SDK/CLI/MCP/reference executor: cloud-testable work complete; real agentic Touch ID scenario ready for local validation.
-- W5/W6 hardware: intentionally blocked until the W4 value gate passes.
+- W0–W2 foundation/core/service: DONE.
+- W3 Apple authenticator: DONE and validated on a real Mac.
+- W4 MCP/requester/executor scenario: DONE; real agent → Touch ID → bounded executor gate passed.
+- W5/W6 hardware: DEFERRED / not current work.
+- W7 protocol freeze, self-host package and publishable TypeScript SDK: DONE.
+- W7 independent/cross-model security review: READY_FOR_EXTERNAL_REVIEW after first-party findings were fixed.
+- W8 DubBridge/product integrations: FUTURE.
 
-CI currently covers runtime security tests, MCP stdio surface, strict production typecheck, exact-action binding, stale preconditions, replay, single consumption and post-mutation idempotent retry.
+CI covers runtime security tests, publishable package checks, strict production typecheck, Docker build/health smoke, MCP stdio surface and macOS compilation. The physical Mac gate additionally validates Secure Enclave enrollment, trusted presentation and Touch ID approval.
 
-## Local Mac gates
+## Self-host
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+The default compose deployment binds HAA to `127.0.0.1:8787`, persists SQLite state and the authority private key in separate volumes, and does not require development bootstrap credentials.
+
+See `docs/SELF-HOSTING.md` for client provisioning, key persistence and network-boundary guidance.
+
+## Public TypeScript packages
+
+The repository now builds distributable package boundaries:
+
+```bash
+npm install
+npm run pack:check
+```
+
+- `@haa/protocol` — frozen protocol v1 types/runtime metadata (`1.0.0`).
+- `@haa/sdk` — typed requester/executor client with generated JS/declarations and `HaaApiError`.
+
+See `docs/PROTOCOL-V1.md` for compatibility rules.
+
+## Local Mac validation
 
 ```bash
 npm install
@@ -45,18 +73,25 @@ npm run validate:macos
 npm run validate:agent-macos
 ```
 
-`validate:macos` validates the Apple authenticator ceremony. `validate:agent-macos` validates the stronger end-to-end scenario: **MCP requester → human Touch ID → external bounded executor**.
+`validate:agent-macos` has passed on a real Apple Silicon Mac and validates the strongest current software path: **MCP requester → human Touch ID → external bounded executor**.
 
-The validation helpers create temporary HAA state and clean their validation Secure Enclave key when finished.
+## Security posture
+
+HAA is suitable for internal pilot/integration work under its documented trust assumptions. It is **not yet presented as an Internet-exposed/compliance-ready production system**.
+
+The current review fixed requester self-approval, production exposure of the software-only test verifier and cross-client request/audit visibility. Residual hardening is documented in `docs/SECURITY-REVIEW-V1.md`.
 
 ## Project control
 
 - Architecture: `docs/ARCHITECTURE.md`
+- Protocol v1: `docs/PROTOCOL-V1.md`
 - Security invariants: `docs/SECURITY.md`
+- Security review: `docs/SECURITY-REVIEW-V1.md`
+- Self-hosting: `docs/SELF-HOSTING.md`
 - Current status: `docs/STATUS.md`
-- Hardware subplan: `docs/HARDWARE-SUBPLAN.md`
-- Hardware decision gate: `docs/VALUE-GATE.md`
-- 50-task dependency graph/status: `tasks/manifest.yaml`
+- Hardware decision: `docs/VALUE-GATE.md`
+- DubBridge future integration: `docs/DUBBRIDGE-INTEGRATION-BACKLOG.md`
+- Dependency graph/status: `tasks/manifest.yaml`
 - Agent working contract: `AGENTS.md`
 
-Do not begin hardware firmware work before `W4-T06` records PASS.
+Hardware is deliberately not the current execution priority. Resume W5 only through an explicit product-priority decision.
