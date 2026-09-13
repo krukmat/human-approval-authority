@@ -1,0 +1,28 @@
+{
+  "name": "human-approval-authority",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test:core": "node --experimental-strip-types --test tests/core.test.ts",
+    "test:service": "node --experimental-strip-types --test tests/service.test.ts",
+    "check": "npm run test",
+    "start": "node --experimental-strip-types apps/haa-server/src/server.ts"
+  },
+  "dependencies": {
+    "fastify": "^5.6.0",
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}
