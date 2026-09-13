@@ -16,7 +16,7 @@ Active work is limited to the universal HAA product:
 - audit integrity;
 - self-host operational security;
 - SDK / executor verification;
-- APPROVE / REJECT / UNKNOWN ceremony semantics;
+- APPROVE / REJECT ceremony semantics;
 - HAA-only automated and physical validation.
 
 Out of active scope:
@@ -29,16 +29,18 @@ Out of active scope:
 
 ## Current baseline
 
-W0-W4 are complete. W5/W6 are deferred/blocked by product priority. W7-T01 through W7-T03 are complete. W7-T05 is awaiting independent/cross-model review.
+W0-W4 are complete. W5/W6 are deferred/blocked by product priority. W7-T01 through W7-T03 are complete. W7-T05 is awaiting independent/cross-model review. W7-T06 through W7-T14 are complete, leaving W7-T15 blocked only by W7-T05.
 
-HAA protocol v1 is frozen. New work must preserve the existing signed v1 schemas and compatibility contract. `ApprovalState` already contains `REJECTED` and `EXPIRED`; it does not contain `UNKNOWN`.
+HAA protocol v1 is frozen. New work must preserve the existing signed v1 schemas and compatibility contract. `ApprovalState` already contains `REJECTED` and `EXPIRED`.
 
 Therefore:
 
-- `REJECT` will use the existing rejection lifecycle semantics after its provenance model is defined;
-- `UNKNOWN` is a ceremony outcome, **not** a new `ApprovalState`;
-- window close / local timeout / interruption may return `UNKNOWN` to the caller while the request remains `PENDING` if still valid;
-- actual request/challenge expiry continues to use existing `EXPIRED` semantics;
+- terminal ceremony behavior has exactly two operational results: `APPROVE` or `REJECT`;
+- only successful positive authenticator evidence may produce `APPROVE`;
+- every other terminal ceremony result uses `REJECTED` with a typed reason;
+- `USER_ESCAPE` is the only rejection reason that claims an explicit negative human action;
+- window close, timeout, challenge expiry and terminal interaction error are fail-closed rejection reasons and do not claim biometric or explicit-human rejection;
+- request TTL expiry remains lifecycle `EXPIRED`, distinct from challenge-level `CHALLENGE_EXPIRED` rejection;
 - only verified approval evidence may lead to `ApprovalReceipt` and `ExecutionGrant`.
 
 ---
@@ -237,17 +239,18 @@ This gate does **not** require hardware, WebAuthn, DubBridge or any other produc
 
 Goal: make HAA's human ceremony semantics explicit and usable independently of any product integration.
 
-The target UX semantics are:
+The target terminal UX semantics are:
 
 ```text
-successful Touch ID  -> APPROVE
-Esc                   -> REJECT
-window close          -> UNKNOWN
-local timeout         -> UNKNOWN
-technical interruption-> UNKNOWN
+successful Touch ID   -> APPROVE
+Esc                    -> REJECT / USER_ESCAPE
+window close           -> REJECT / WINDOW_CLOSED
+local timeout          -> REJECT / TIMEOUT
+challenge expiry       -> REJECT / CHALLENGE_EXPIRED
+interaction failure    -> REJECT / INTERACTION_ERROR
 ```
 
-Important compatibility rule: `UNKNOWN` is not added to frozen `haa.request.v1` / `ApprovalState`.
+Actual request TTL expiry remains lifecycle `EXPIRED` and is not a ceremony rejection.
 
 ## W8-T01 — Ceremony outcome ADR
 
@@ -256,59 +259,68 @@ Dependencies: `W7-T01`
 Freeze the semantic model:
 
 ```text
-APPROVE = explicit positive human authorization
-REJECT  = explicit negative human decision
-UNKNOWN = no conclusive human decision
+APPROVE = verified positive human authorization
+REJECT  = every other terminal ceremony outcome
 ```
 
-Define the mapping between ceremony outcomes and existing request lifecycle states.
+Reason/assurance metadata prevents a fail-closed technical outcome from being mislabeled as explicit human rejection.
 
-Acceptance: the ADR proves that only APPROVE can create execution authority and that UNKNOWN does not falsify human intent.
+Acceptance: only APPROVE can create execution authority; every other terminal ceremony fails closed as REJECT without modifying signed protocol-v1 schemas.
 
 ## W8-T02 — Negative-decision provenance and threat model
 
 Dependencies: `W8-T01`, `W7-T12`
 
-Resolve how an explicit `Esc` can be attributed to the trusted approver application without requiring Touch ID and without allowing a requester/agent to forge a human rejection claim.
+Define how negative terminal outcomes are attributed to the trusted approver channel without requiring Touch ID and without allowing a requester/agent to forge the claim.
 
-Evaluate at minimum:
+Must distinguish:
 
-- trusted local app assertion;
+- `USER_ESCAPE` -> `explicit-human-negative-action`;
+- close/timeout/challenge-expiry/interaction-error -> `fail-closed-terminal`;
 - authenticated control channel/session;
-- separate non-biometric device/control key;
+- exact challenge binding;
 - denial-of-service implications;
 - audit assurance wording.
 
-Acceptance: one design is selected with clear assurance level and TCB consequences before adding a reject endpoint or signed rejection object.
+Acceptance: the design states exactly what each negative reason proves and does not prove.
 
 ## W8-T03 — Explicit REJECT service path
 
 Dependencies: `W8-T02`, `W7-T06`, `W7-T08`
 
-Implement the selected explicit-rejection mechanism using the already-existing `REJECTED` lifecycle semantics.
+Implement rejection using the existing `REJECTED` lifecycle semantics.
 
 Rules:
 
 - reject is challenge/request bound;
-- stale/foreign rejection attempts fail closed;
+- requester/wrong approver cannot manufacture trusted rejection;
+- wrong/consumed challenge fails closed;
+- rejection reason is allow-listed and validated;
+- `CHALLENGE_EXPIRED` is accepted only for an actually expired challenge;
 - reject never creates `ApprovalEvidence`, `ApprovalReceipt` or `ExecutionGrant`;
-- rejection reason/provenance is auditable;
-- requester self-assertion must not be mislabeled as human rejection.
+- reason/provenance/assurance are auditable.
 
-## W8-T04 — UNKNOWN / indeterminate ceremony semantics
+## W8-T04 — Fail-closed terminal rejection semantics
 
 Dependencies: `W8-T01`
 
-Implement caller/app semantics for inconclusive ceremonies without changing frozen request states.
+Define all terminal negative mappings without creating a third ceremony state:
+
+```text
+Esc                 -> REJECT / USER_ESCAPE
+window close        -> REJECT / WINDOW_CLOSED
+local timeout       -> REJECT / TIMEOUT
+challenge expiry    -> REJECT / CHALLENGE_EXPIRED
+interaction error   -> REJECT / INTERACTION_ERROR
+```
 
 Rules:
 
-- window close -> UNKNOWN to caller;
-- local UI timeout/interruption -> UNKNOWN to caller;
-- if request remains valid, server state may remain `PENDING`;
-- actual protocol/request expiry remains `EXPIRED`;
-- UNKNOWN never creates execution capability;
-- operational telemetry may record cause, but must not claim a human decision.
+- all terminal negative outcomes end `REJECTED` when the request itself remains valid;
+- only `USER_ESCAPE` claims explicit negative human action;
+- all other reasons use fail-closed assurance;
+- request TTL expiry remains `EXPIRED`;
+- no negative outcome can create execution capability.
 
 ## W8-T05 — macOS approver UX
 
@@ -318,33 +330,41 @@ Implement the ceremony UX:
 
 - trusted display remains mandatory;
 - approve invokes Touch ID and Secure Enclave signing;
-- Esc triggers explicit REJECT through the selected trusted path;
-- close/timeout returns UNKNOWN;
-- failure to obtain valid approval remains fail-closed.
+- Esc produces `USER_ESCAPE`;
+- close produces `WINDOW_CLOSED`;
+- local timeout produces `TIMEOUT`;
+- a verified-but-expired challenge produces `CHALLENGE_EXPIRED`;
+- terminal authenticator/interaction failure produces `INTERACTION_ERROR`;
+- all negative terminal outputs use the rejection path and no positive evidence.
 
 ## W8-T06 — SDK / CLI ceremony result contract
 
 Dependencies: `W8-T03`, `W8-T04`, `W7-T03`
 
-Expose a stable caller-facing result model that distinguishes:
+Expose a stable two-outcome caller-facing model:
 
 - approved;
-- explicitly rejected;
-- indeterminate/unknown;
-- expired/revoked request lifecycle outcomes;
-- transport/system errors.
-
-Do not reinterpret UNKNOWN as REJECT.
+- rejected with typed reason/provenance/assurance;
+- expired request lifecycle remains visible through request state/errors;
+- transport/pre-ceremony validation failures remain errors rather than forged human decisions.
 
 ## W8-T07 — Audit and observability semantics
 
 Dependencies: `W8-T03`, `W8-T04`, `W7-T11`
 
-Define the audit/operational representation for rejection and indeterminate ceremonies while preserving frozen `haa.audit.v1` compatibility.
+Define the audit representation for terminal rejection while preserving frozen `haa.audit.v1` compatibility.
 
-Use existing `details` extension points or non-protocol operational telemetry where appropriate; do not mutate frozen event semantics silently.
+Use existing `details` extension points for:
 
-Acceptance: an operator can distinguish explicit rejection, expiry and inconclusive UI/session termination without claiming unsupported human assurance.
+```text
+challengeDigest
+authenticatorId
+reason
+provenance
+assurance
+```
+
+Acceptance: an operator can distinguish explicit Escape from close/timeout/expiry/error and from request lifecycle `EXPIRED`, without claiming unsupported human assurance.
 
 ## W8-T08 — HAA-only automated ceremony E2E
 
@@ -353,13 +373,15 @@ Dependencies: `W8-T05`, `W8-T06`, `W8-T07`
 Automated matrix must prove:
 
 - valid approval -> receipt/grant path succeeds;
-- Esc reject -> request cannot execute;
-- close -> UNKNOWN and no grant;
-- local timeout -> UNKNOWN and no grant;
-- actual expiry -> EXPIRED and no grant;
-- stale challenge -> fail closed;
+- Esc -> REJECT and no grant;
+- close -> REJECT and no grant;
+- local timeout -> REJECT and no grant;
+- interaction error -> REJECT and no grant;
+- actual challenge expiry can be classified as `CHALLENGE_EXPIRED` but not forged before expiry;
+- actual request TTL -> EXPIRED and no grant;
+- stale/wrong challenge -> fail closed;
 - replay -> fail closed/idempotent according to existing semantics;
-- requester cannot fabricate an approval or a trusted human-rejection provenance.
+- requester cannot fabricate an approval or trusted rejection provenance.
 
 No external product repository is used.
 
@@ -370,11 +392,13 @@ Dependencies: `W8-T08`, `W7-T15`
 Run on the real provisioned Apple Silicon path:
 
 1. trusted display + Touch ID -> APPROVE;
-2. Esc -> REJECT;
-3. window close -> UNKNOWN;
-4. timeout/interruption -> UNKNOWN;
-5. only the approval path can produce a usable `ExecutionGrant`;
-6. existing W3/W4 physical approval behavior remains regression-safe.
+2. Esc -> REJECT / USER_ESCAPE;
+3. window close -> REJECT / WINDOW_CLOSED;
+4. timeout -> REJECT / TIMEOUT;
+5. challenge expiry -> REJECT / CHALLENGE_EXPIRED;
+6. terminal interaction failure -> REJECT / INTERACTION_ERROR where safely reproducible;
+7. only the approval path can produce a usable `ExecutionGrant`;
+8. existing W3/W4 physical approval behavior remains regression-safe.
 
 Acceptance: HAA is integration-ready with generic, independently validated human ceremony semantics.
 
@@ -396,8 +420,8 @@ W7-T13 detached grants     │
 W7-T14 backup/recovery ────┘
 
 W8-T01 ceremony ADR
-   ├─> W8-T02 reject provenance -> W8-T03 explicit reject ─┐
-   └─> W8-T04 UNKNOWN semantics ───────────────────────────┤
+   ├─> W8-T02 reject provenance -> W8-T03 reject service ─┐
+   └─> W8-T04 fail-closed terminal semantics ─────────────┤
                                                            v
                                                         W8-T05 macOS UX
                                                            │
@@ -415,12 +439,9 @@ W8-T01 ceremony ADR
 
 ## Active priority
 
-Recommended implementation order:
+Current order:
 
-1. `W7-T05` review in parallel with `W7-T06`, `W7-T07`, `W7-T08`, `W7-T09`, `W7-T12`, `W7-T14`;
-2. `W7-T10`, `W7-T11`, `W7-T13` once their prerequisites land;
-3. `W7-T15` production-readiness gate;
-4. W8 ceremony semantics and macOS/SDK/audit work;
-5. `W8-T09` physical final gate.
-
-Product integrations remain parked until this HAA-only roadmap is deliberately completed or reprioritized.
+1. complete `W7-T05` independent/cross-model review;
+2. close `W7-T15` only when W7-T05 has no blocking findings and readiness evidence remains green;
+3. execute `W8-T09` on the physical provisioned Mac;
+4. keep product integrations parked until this HAA-only baseline is deliberately accepted.
