@@ -140,12 +140,13 @@ test('UNKNOWN is local and leaves a still-valid server request pending', () => {
 
 test('HTTP reject endpoint is strict and returns ceremony result', async () => {
   const f = fixture();
-  const { digest } = requestAndChallenge(f);
+  const requestId = 'req-ceremony-http';
+  const { digest } = requestAndChallenge(f, requestId, new Date());
   const server = buildHttpServer(f.app);
 
   const invalid = await server.inject({
     method: 'POST',
-    url: '/v1/approval-requests/req-ceremony/reject',
+    url: `/v1/approval-requests/${requestId}/reject`,
     headers: { 'x-api-key': 'human-secret' },
     payload: { challengeDigest: digest, reason: 'USER_ESCAPE', extra: true },
   });
@@ -154,13 +155,13 @@ test('HTTP reject endpoint is strict and returns ceremony result', async () => {
 
   const rejected = await server.inject({
     method: 'POST',
-    url: '/v1/approval-requests/req-ceremony/reject',
+    url: `/v1/approval-requests/${requestId}/reject`,
     headers: { 'x-api-key': 'human-secret' },
     payload: { challengeDigest: digest, reason: 'USER_ESCAPE' },
   });
   assert.equal(rejected.statusCode, 200);
   assert.deepEqual(rejected.json(), {
-    outcome: 'REJECT', requestId: 'req-ceremony', state: 'REJECTED', reason: 'USER_ESCAPE',
+    outcome: 'REJECT', requestId, state: 'REJECTED', reason: 'USER_ESCAPE',
   });
 
   await server.close();
