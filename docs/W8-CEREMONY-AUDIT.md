@@ -4,7 +4,7 @@ Status: FROZEN FOR HAA-ONLY IMPLEMENTATION
 
 ## Goal
 
-Audit must distinguish what HAA can prove from what merely happened in a local UI process.
+Audit must distinguish strong positive authorization from negative fail-closed outcomes without overstating what HAA can prove about human intent.
 
 ## Authoritative request audit
 
@@ -16,63 +16,73 @@ The event may identify the verified authenticator. Positive authority remains re
 
 ### REJECT
 
-An explicit rejection records `REJECTED` only after the HAA service verifies:
+A terminal rejection records `REJECTED` only after HAA verifies:
 
 - authenticated `APPROVER` identity;
 - exact configured approver principal;
-- active challenge and exact challenge digest;
-- signed challenge binding to request/action/intent;
+- exact request/challenge binding;
+- HAA-signed challenge payload and action/intent digests;
 - active authenticator ownership;
-- supported explicit rejection reason.
+- supported typed rejection reason;
+- reason-specific expiry semantics.
 
-The event details are:
+Event details include:
 
 ```text
 challengeDigest
 authenticatorId
-reason=USER_ESCAPE
+reason
 provenance=authenticated-approver-channel
+assurance
 ```
 
-This event is included in the W7 `audit_events` hash chain and therefore participates in signed audit checkpoints.
-
-The audit wording must not imply Touch ID, biometric proof, or Secure Enclave signature for REJECT.
-
-### UNKNOWN
-
-UNKNOWN is deliberately **not** written as `APPROVED`, `REJECTED` or another human-decision `AuditEvent`.
-
-Typical UNKNOWN causes:
+Supported reasons:
 
 ```text
+USER_ESCAPE
 WINDOW_CLOSED
-LOCAL_TIMEOUT
-APP_TERMINATED
+TIMEOUT
+CHALLENGE_EXPIRED
 INTERACTION_ERROR
-AUTHENTICATOR_UNAVAILABLE
 ```
 
-These are local ceremony observations. If the request is still valid, HAA remains `PENDING` and its authoritative audit history still shows only the server-side events that really occurred, such as `REQUESTED` and `CHALLENGE_ISSUED`.
+Assurance interpretation:
 
-Deployments may collect separate operational telemetry for app crashes/timeouts, but that telemetry is not human authorization evidence and must not be promoted into the request audit as a human decision.
+```text
+USER_ESCAPE
+  assurance=explicit-human-negative-action
+
+WINDOW_CLOSED / TIMEOUT / CHALLENGE_EXPIRED / INTERACTION_ERROR
+  assurance=fail-closed-terminal
+```
+
+All are operational REJECT outcomes and all block execution. Only `USER_ESCAPE` means the trusted UI observed the explicit negative key action. The others do not prove the human consciously chose Reject.
+
+`REJECTED` participates in the W7 `audit_events` hash chain and signed checkpoints.
 
 ### EXPIRED
 
-True lifecycle expiry is distinct from UNKNOWN. A caller observing a local timeout does not have authority to rewrite a request as `EXPIRED`; expiry is determined by HAA lifecycle timestamps and server-side validation.
+Request lifecycle expiry is separate from ceremony rejection.
+
+```text
+reason=REQUEST_TTL -> request state EXPIRED
+```
+
+A challenge may expire before the request TTL. In that case a terminal ceremony can be recorded as `REJECTED` with `reason=CHALLENGE_EXPIRED`, while actual request-TTL expiry remains `EXPIRED`.
 
 ## Reconstruction rule
 
-An auditor should be able to interpret a request as:
+An auditor interprets a request as:
 
 ```text
-APPROVED  -> HAA verified positive evidence
-REJECTED  -> authenticated approver explicitly refused an exact active challenge
-PENDING   -> no terminal human decision has been accepted yet
-EXPIRED   -> authorization lifetime ended
+APPROVED  -> HAA verified positive authenticator evidence
+REJECTED  -> ceremony terminated without positive authorization; inspect reason + assurance
+PENDING   -> no terminal ceremony/lifecycle transition accepted yet
+EXPIRED   -> request authorization lifetime ended
 CONSUMED  -> approved authority was used exactly once
 ```
 
-UNKNOWN does not appear in this state reconstruction because it is not an `ApprovalState`.
+For any `REJECTED` record, reason and assurance are mandatory for understanding provenance. The state alone must not be translated into “the human explicitly rejected”.
 
 ## Security invariant
 
@@ -82,4 +92,4 @@ No audit record by itself creates execution authority.
 AuditEvent != ApprovalReceipt != ExecutionGrant
 ```
 
-Only the existing positive `authorizeAndConsume(...)` path can produce an `ExecutionGrant`.
+Only the verified positive `authorizeAndConsume(...)` path can produce an `ExecutionGrant`.
