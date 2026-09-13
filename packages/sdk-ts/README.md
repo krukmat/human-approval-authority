@@ -36,40 +36,48 @@ const request = await haa.requestApproval({
 
 ## Ceremony outcomes
 
-HAA distinguishes three caller-visible ceremony outcomes:
+A terminal HAA ceremony has exactly two operational outcomes:
 
 ```text
-APPROVE  verified positive authenticator evidence
-REJECT   explicit authenticated refusal
-UNKNOWN  no attributable human decision
+APPROVE  successful verified positive authenticator evidence
+REJECT   every other terminal ceremony outcome
 ```
 
 Only APPROVE can eventually produce an `ExecutionGrant`.
 
-An approver-side client may submit the explicit Esc rejection for the exact active challenge:
+The supported rejection reasons are:
+
+```text
+USER_ESCAPE
+WINDOW_CLOSED
+TIMEOUT
+CHALLENGE_EXPIRED
+INTERACTION_ERROR
+```
+
+They do not all make the same human-intent claim. `USER_ESCAPE` is an explicit negative human action. The other reasons are fail-closed terminal outcomes and must not be described as biometric or explicit human rejection.
+
+An approver-side client submits the terminal result against the exact challenge:
 
 ```ts
 const result = await approverClient.rejectApproval({
   requestId: request.id,
   challengeDigest,
-  reason: 'USER_ESCAPE',
+  reason: 'TIMEOUT',
 });
 
-// { outcome: 'REJECT', state: 'REJECTED', ... }
+// {
+//   outcome: 'REJECT',
+//   state: 'REJECTED',
+//   reason: 'TIMEOUT',
+//   assurance: 'fail-closed-terminal',
+//   ...
+// }
 ```
 
-`rejectApproval` must be called with the configured approver principal's `APPROVER` credential. A requester/executor credential cannot use the endpoint merely because it knows the request ID or challenge digest.
+`rejectApproval` must use the configured approver principal's `APPROVER` credential. Requester/executor credentials cannot create a trusted rejection merely because they know the request ID or challenge digest.
 
-Window close, local timeout, app termination or similar indeterminate outcomes are local results and do not assert a server-side human decision:
-
-```ts
-import { unknownCeremonyResult } from '@haa/sdk';
-
-const result = unknownCeremonyResult(request.id, 'LOCAL_TIMEOUT');
-// { outcome: 'UNKNOWN', requestId: ..., reason: 'LOCAL_TIMEOUT' }
-```
-
-If the underlying request is still valid, UNKNOWN leaves it `PENDING`. Actual lifecycle expiry remains `EXPIRED`, not `REJECTED` or UNKNOWN.
+A real request TTL expiry remains the lifecycle state `EXPIRED`; it is not rewritten as ceremony `REJECTED`.
 
 ## Authorize exact execution
 
@@ -127,4 +135,4 @@ Detached verification failures throw `HaaGrantVerificationError` with a bounded 
 
 ## Compatibility
 
-This SDK consumes `@haa/protocol` v1. W8 ceremony outcomes do not add `UNKNOWN` to `ApprovalState` and do not mutate frozen approval-bearing v1 schemas. See `docs/PROTOCOL-V1.md` and `docs/W8-CEREMONY-OUTCOMES.md`.
+The SDK consumes `@haa/protocol` v1. W8's two-outcome ceremony contract does not modify frozen approval-bearing v1 schemas. See `docs/PROTOCOL-V1.md` and `docs/W8-CEREMONY-OUTCOMES.md`.
