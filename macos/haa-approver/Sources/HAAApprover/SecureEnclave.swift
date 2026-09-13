@@ -1,5 +1,6 @@
 import Foundation
 #if os(macOS)
+import LocalAuthentication
 import Security
 #endif
 
@@ -43,6 +44,7 @@ final class SecureEnclaveAuthenticator {
             kSecClass: kSecClassKey,
             kSecAttrApplicationTag: tag,
             kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecUseDataProtectionKeychain: true,
         ]
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
@@ -73,9 +75,14 @@ final class SecureEnclaveAuthenticator {
             kSecClass: kSecClassKey,
             kSecAttrApplicationTag: tag,
             kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecUseDataProtectionKeychain: true,
             kSecReturnRef: true
         ]
-        if let prompt { query[kSecUseOperationPrompt] = prompt }
+        if let prompt {
+            let context = LAContext()
+            context.localizedReason = prompt
+            query[kSecUseAuthenticationContext] = context
+        }
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
         guard status == errSecSuccess, let key = item as! SecKey? else {
