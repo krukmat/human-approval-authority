@@ -111,6 +111,8 @@ verifyExecutionGrant({
 });
 ```
 
+`authorityKeys` is trusted verification-policy input. Obtain it from the authenticated/TLS-protected HAA authority endpoint or from pinned operator configuration; do not accept authority-key status metadata from the same untrusted intermediary that transports the grant.
+
 Live execution authority is stricter than historical signature verification. `verifyExecutionGrant(...)` accepts only the **currently ACTIVE** authority key. A RETIRED key remains useful for historical verification of artifacts such as receipts/audit evidence, but it cannot authorize a live detached `ExecutionGrant`.
 
 The verifier also checks:
