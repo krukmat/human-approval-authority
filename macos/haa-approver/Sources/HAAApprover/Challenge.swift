@@ -11,6 +11,11 @@ struct VerifiedChallenge {
     let digest: String
 }
 
+func isChallengeExpired(_ challenge: VerifiedChallenge, now: Date = Date()) -> Bool {
+    guard let expiresAt = ISO8601DateFormatter().date(from: challenge.payload.expiresAt) else { return true }
+    return expiresAt <= now
+}
+
 #if os(macOS)
 private let p256SPKIPrefix = Data([0x30,0x59,0x30,0x13,0x06,0x07,0x2A,0x86,0x48,0xCE,0x3D,0x02,0x01,0x06,0x08,0x2A,0x86,0x48,0xCE,0x3D,0x03,0x01,0x07,0x03,0x42,0x00])
 
@@ -43,9 +48,6 @@ func verifyChallenge(_ package: ChallengePackage, authorityPublicKeyPEM: String)
     let payload = try JSONDecoder().decode(ChallengePayload.self, from: payloadBytes)
     guard payload.schema == "haa.challenge-payload.v1", payload.protocolVersion == 1 else {
         throw NSError(domain: "HAA", code: 5, userInfo: [NSLocalizedDescriptionKey: "Unsupported challenge payload"])
-    }
-    guard payload.expiresAt > ISO8601DateFormatter().string(from: Date()) else {
-        throw NSError(domain: "HAA", code: 6, userInfo: [NSLocalizedDescriptionKey: "Challenge expired"])
     }
     let hash = SHA256.hash(data: payloadBytes)
     let digest = "sha256:" + Data(hash).base64URLEncodedString()
