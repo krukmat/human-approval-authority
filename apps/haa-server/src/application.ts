@@ -347,6 +347,27 @@ export class HaaApplication {
     if (request.state === 'APPROVED') request = this.refreshRequestExpiry(request, now);
     if (request.state === 'EXPIRED') throw new Error('APPROVAL_EXPIRED');
     if (request.state !== 'APPROVED') throw new Error(`REQUEST_NOT_APPROVED:${request.state}`);
+
+    const receipt = this.store.getReceipt(request.id);
+    if (!receipt) throw new Error('APPROVAL_RECEIPT_MISSING');
+    const approvalAuthenticator = this.store.getAuthenticator(receipt.authenticatorId);
+    if (!approvalAuthenticator || approvalAuthenticator.status !== 'ACTIVE') {
+      assertTransition('APPROVED', 'REVOKED');
+      const revokedAt = now.toISOString();
+      const changed = this.store.transitionRequest(request.id, 'APPROVED', 'REVOKED', revokedAt);
+      if (changed) {
+        this.store.appendAudit(this.audit({
+          requestId: request.id,
+          eventType: 'REVOKED',
+          actorId: 'haa-authority',
+          actionDigest: request.actionDigest,
+          at: now,
+          details: { reason: 'AUTHENTICATOR_REVOKED', authenticatorId: receipt.authenticatorId },
+        }));
+      }
+      throw new Error('APPROVAL_REVOKED');
+    }
+
     this.profiles.validatePreconditions(args.actualAction, args.actualState);
 
     const grant = createExecutionGrant({
