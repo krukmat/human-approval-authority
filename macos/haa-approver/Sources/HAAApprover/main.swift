@@ -8,6 +8,12 @@ func arg(_ name: String) -> String? {
 let authenticatorId = arg("--authenticator-id") ?? "mac-default"
 let authenticator = SecureEnclaveAuthenticator(authenticatorId: authenticatorId)
 
+if CommandLine.arguments.contains("--delete") {
+    try authenticator.delete()
+    print("deleted \(authenticatorId)")
+    exit(0)
+}
+
 if CommandLine.arguments.contains("--enroll") {
     let publicKey = try authenticator.enroll()
     let output: [String: Any] = [
@@ -22,7 +28,7 @@ if CommandLine.arguments.contains("--enroll") {
 }
 
 guard let challengePath = arg("--challenge"), let authorityKeyPath = arg("--authority-public-key") else {
-    FileHandle.standardError.write(Data("usage: haa-approver --enroll --authenticator-id <id> | --challenge <json> --authority-public-key <pem> --authenticator-id <id>\n".utf8))
+    FileHandle.standardError.write(Data("usage: haa-approver --enroll --authenticator-id <id> | --delete --authenticator-id <id> | --challenge <json> --authority-public-key <pem> --authenticator-id <id>\n".utf8))
     exit(2)
 }
 let challengeData = try Data(contentsOf: URL(fileURLWithPath: challengePath))
