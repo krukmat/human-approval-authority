@@ -31,6 +31,15 @@ export interface AuthorityVerificationKey {
   publicKeyPem: string;
 }
 
+export type RejectionReason = 'USER_ESCAPE';
+
+export interface RejectionResult {
+  outcome: 'REJECT';
+  requestId: string;
+  state: 'REJECTED';
+  reason: RejectionReason;
+}
+
 export interface HaaApplicationOptions {
   store: SqliteStore;
   authoritySigner: Signer;
@@ -162,6 +171,59 @@ export class HaaApplication {
     this.store.saveChallenge(digest, challenge, payload.requestId, payload.authenticatorId, payload.issuedAt);
     this.store.appendAudit(this.audit({ requestId: request.id, eventType: 'CHALLENGE_ISSUED', actorId: actor, actionDigest: request.actionDigest, at: args.now ?? new Date(), details: { challengeDigest: digest } }));
     return challenge;
+  }
+
+  rejectApproval(args: {
+    apiKey: string;
+    requestId: string;
+    challengeDigest: string;
+    reason: RejectionReason;
+    now?: Date;
+  }): RejectionResult {
+    const actor = this.authenticateAs(args.apiKey, 'APPROVER');
+    const request = this.mustRequest(args.requestId);
+    if (actor !== request.intent.approverPrincipalId) throw new Error('FORBIDDEN');
+    if (request.state !== 'PENDING') throw new Error(`REQUEST_NOT_PENDING:${request.state}`);
+    if (args.reason !== 'USER_ESCAPE') throw new Error('UNSUPPORTED_REJECTION_REASON');
+
+    const storedChallenge = this.store.getChallenge(args.challengeDigest);
+    if (!storedChallenge || storedChallenge.consumed) throw new Error('CHALLENGE_NOT_ACTIVE');
+    const challenge = storedChallenge.challenge;
+    const authorityKey = this.authorityKeyResolver(challenge.authorityKeyId);
+    if (!authorityKey
+      || authorityKey.algorithm !== challenge.signatureAlgorithm
+      || !verifyChallengeAuthority(challenge, authorityKey.publicKeyPem)) {
+      throw new Error('INVALID_HAA_CHALLENGE_SIGNATURE');
+    }
+
+    const payload = decodeChallengePayload(challenge);
+    const now = args.now ?? new Date();
+    if (payload.requestId !== request.id || payload.intentDigest !== request.intentDigest || payload.actionDigest !== request.actionDigest) {
+      throw new Error('CHALLENGE_BINDING_MISMATCH');
+    }
+    if (new Date(payload.expiresAt).getTime() <= now.getTime()) throw new Error('CHALLENGE_EXPIRED');
+
+    const authenticator = this.store.getAuthenticator(payload.authenticatorId);
+    if (!authenticator || authenticator.status !== 'ACTIVE') throw new Error('AUTHENTICATOR_NOT_ACTIVE');
+    if (authenticator.principalId !== actor) throw new Error('AUTHENTICATOR_PRINCIPAL_MISMATCH');
+
+    if (!this.store.consumeChallenge(args.challengeDigest)) throw new Error('CHALLENGE_REPLAY');
+    assertTransition('PENDING', 'REJECTED');
+    if (!this.store.transitionRequest(request.id, 'PENDING', 'REJECTED', now.toISOString())) throw new Error('CONCURRENT_REJECTION');
+    this.store.appendAudit(this.audit({
+      requestId: request.id,
+      eventType: 'REJECTED',
+      actorId: actor,
+      actionDigest: request.actionDigest,
+      at: now,
+      details: {
+        challengeDigest: args.challengeDigest,
+        authenticatorId: payload.authenticatorId,
+        reason: args.reason,
+        provenance: 'authenticated-approver-channel',
+      },
+    }));
+    return { outcome: 'REJECT', requestId: request.id, state: 'REJECTED', reason: args.reason };
   }
 
   submitEvidence(args: { apiKey: string; evidence: ApprovalEvidence; now?: Date }) {
