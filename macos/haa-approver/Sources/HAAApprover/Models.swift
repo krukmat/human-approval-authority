@@ -1,12 +1,12 @@
 import Foundation
 
-struct DisplayClaim: Codable {
+struct DisplayClaim: Decodable {
     let label: String
     let value: String
     let emphasis: String?
 }
 
-struct ChallengePayload: Codable {
+struct ChallengePayload: Decodable {
     let schema: String
     let protocolVersion: Int
     let requestId: String
@@ -23,7 +23,7 @@ struct ChallengePayload: Codable {
     let expiresAt: String
 }
 
-struct ChallengePackage: Codable {
+struct ChallengePackage: Decodable {
     let schema: String
     let payload: String
     let authorityKeyId: String
@@ -31,7 +31,7 @@ struct ChallengePackage: Codable {
     let signature: String
 }
 
-struct ApprovalEvidence: Codable {
+struct ApprovalEvidence: Encodable {
     let schema = "haa.evidence.v1"
     let type = "apple-secure-enclave"
     let authenticatorId: String
