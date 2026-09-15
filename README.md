@@ -23,7 +23,7 @@ ExecutionGrant → bounded Executor
 ## Authenticator paths
 
 - **macOS:** physically validated Touch ID-gated P-256 signing with a device-bound Secure Enclave key.
-- **DIY hardware:** authorized by the value gate but currently deferred by product priority.
+- **DIY hardware:** deferred by product priority.
 - Future authenticators plug into the evidence-verifier boundary without changing core execution semantics.
 
 The HAA core never handles fingerprint images/templates and contains no Apple/ESP32-specific policy logic.
@@ -35,7 +35,7 @@ The HAA core never handles fingerprint images/templates and contains no Apple/ES
 A terminal HAA ceremony has two operational outcomes:
 
 ```text
-successful verified Touch ID approval -> APPROVE
+successful verified positive evidence -> APPROVE
 anything else terminal                -> REJECT
 ```
 
@@ -53,18 +53,31 @@ Only APPROVE can lead to `ApprovalReceipt` and `ExecutionGrant`. Real request-TT
 
 ## Current status
 
-- W0–W2 foundation/core/service: DONE.
-- W3 Apple authenticator: DONE and validated on a real Mac.
-- W4 MCP/requester/executor scenario: DONE; real agent → Touch ID → bounded executor gate passed.
-- W5/W6 hardware: DEFERRED / not current work.
-- W7-T01..T14 engineering/productization work: DONE except the independent review gate.
-- W7-T05 independent/cross-model security review: READY_FOR_EXTERNAL_REVIEW.
-- W7-T15 software production-readiness: BLOCKED only by W7-T05.
-- W8-T01..T08 universal ceremony semantics and automated validation: DONE / HAA-only.
-- W8-T09 physical macOS ceremony compatibility gate: BLOCKED by W7-T15.
-- Product-specific integrations: PARKED.
+```text
+W0-W4   foundation/core/service/Apple/agent path     DONE
+W5      hardware POC                                 DEFERRED
+W6      hardware hardening                           BLOCKED by W5
+W7      software production hardening                DONE
+W8      universal ceremony + physical macOS gate     DONE
+W9      reference integration / adoption gate        ACTIVE
+```
 
-CI covers production dependency audit, runtime security/adversarial tests, publishable package checks, strict production typecheck, Docker build/health smoke, physical-orchestrator syntax, MCP stdio surface and macOS Swift/Xcode compilation. CodeQL runs on pushes/PRs to `main` and weekly. The physical Mac gates additionally validate Secure Enclave enrollment, trusted presentation and Touch ID approval.
+W7 closed with independent review `PASS_WITH_FOLLOWUPS`, zero remaining BLOCKING/P1 findings after remediation. W8 closed on a real Apple Silicon Mac with Secure Enclave / Touch ID and validated APPROVE, rejection semantics and the bounded executor path.
+
+W9 now tests HAA as an **external product** rather than continuing to harden the core speculatively:
+
+```text
+W9-T01 release baseline                  DONE
+W9-T02 external integration contract     DONE
+W9-T03 reference external consumer       READY
+W9-T04 real ActionProfile                BLOCKED by T03
+W9-T05 external executor                 BLOCKED
+W9-T06 external E2E                      BLOCKED
+W9-T07 adoption-gap review               BLOCKED
+W9-T08 integration-readiness gate        BLOCKED
+```
+
+The frozen W9 code baseline is `e68b6ad8b8b3901f095e47111aa5545c132cf964`. See `docs/RELEASE-BASELINE.md` and `docs/W9-REFERENCE-INTEGRATION.md`.
 
 ## Self-host
 
@@ -79,17 +92,17 @@ See `docs/SELF-HOSTING.md` for client provisioning, key persistence and network-
 
 ## Public TypeScript packages
 
-The repository builds distributable package boundaries:
-
 ```bash
 npm install
 npm run pack:check
 ```
 
 - `@haa/protocol` — frozen protocol v1 types/runtime metadata (`1.0.0`).
-- `@haa/sdk` — typed requester/executor/ceremony client with generated JS/declarations and explicit verification/error contracts.
+- `@haa/sdk` — typed requester/executor/ceremony client (`0.2.0`) with detached `ExecutionGrant` verification.
 
-See `docs/PROTOCOL-V1.md` for compatibility rules.
+External consumers should use only the HTTP API, `@haa/protocol`, `@haa/sdk` and documented authenticator/operator surfaces. Do not import `packages/core`, persistence internals or server implementation code.
+
+See `docs/EXTERNAL-INTEGRATION.md` for the minimum integration contract.
 
 ## Local Mac validation
 
@@ -97,13 +110,6 @@ See `docs/PROTOCOL-V1.md` for compatibility rules.
 npm install
 npm run validate:macos
 npm run validate:agent-macos
-```
-
-`validate:agent-macos` has passed on a real Apple Silicon Mac and validates the strongest current software path: **MCP requester → human Touch ID → external bounded executor**.
-
-After W7-T15 closes, W8-T09 uses the HAA-only physical ceremony orchestrator:
-
-```bash
 npm run validate:macos-ceremony -- --case approve
 npm run validate:macos-ceremony -- --case escape
 npm run validate:macos-ceremony -- --case window-close
@@ -111,13 +117,19 @@ npm run validate:macos-ceremony -- --case timeout
 npm run validate:macos-ceremony -- --case challenge-expired
 ```
 
-See `docs/W8-PHYSICAL-CEREMONY-GATE.md`.
+The physical W8 gate is recorded in `docs/W8-PHYSICAL-CEREMONY-GATE.md`.
 
 ## Security posture
 
-HAA is suitable for internal pilot/integration work under its documented trust assumptions. It is **not yet presented as an Internet-exposed/compliance-ready production system**.
+HAA is suitable for internal pilot/integration work under its documented trust assumptions. It is not presented as an Internet-exposed/compliance-ready managed service.
 
-The first-party review fixed requester self-approval, production exposure of the software-only test verifier and cross-client request/audit visibility. Current completion requires an actually independent/cross-model W7-T05 review and W7-T15 reconciliation before the final physical W8-T09 gate.
+Important boundaries remain explicit:
+
+- Secure Enclave-backed signing is not claimed as remote/platform attestation;
+- operator-managed edge controls provide TLS/rate limiting/network exposure protection;
+- hardware authenticator hardening remains deferred;
+- administrative credential audit remains separate from request-audit checkpoint evidence;
+- a receipt or `APPROVED` request state never authorizes execution.
 
 ## Project control
 
@@ -125,17 +137,15 @@ The first-party review fixed requester self-approval, production exposure of the
 - Protocol v1: `docs/PROTOCOL-V1.md`
 - Security invariants: `docs/SECURITY.md`
 - Authenticator assurance: `docs/AUTHENTICATOR-ASSURANCE.md`
-- First-party security review: `docs/SECURITY-REVIEW-V1.md`
-- Independent review packet: `docs/W7-INDEPENDENT-REVIEW-PACKET.md`
 - Production-readiness gate: `docs/W7-PRODUCTION-READINESS.md`
 - W8 ceremony contract: `docs/W8-CEREMONY-OUTCOMES.md`
 - W8 physical gate: `docs/W8-PHYSICAL-CEREMONY-GATE.md`
-- Active roadmap: `docs/HAA-ACTIVE-ROADMAP.md`
+- Frozen release baseline: `docs/RELEASE-BASELINE.md`
+- External integration contract: `docs/EXTERNAL-INTEGRATION.md`
+- W9 adoption wave: `docs/W9-REFERENCE-INTEGRATION.md`
+- Completed HAA-only roadmap: `docs/HAA-ACTIVE-ROADMAP.md`
 - Self-hosting: `docs/SELF-HOSTING.md`
 - Current status: `docs/STATUS.md`
-- Hardware decision: `docs/VALUE-GATE.md`
-- Parked product integration notes: `docs/DUBBRIDGE-INTEGRATION-BACKLOG.md`
+- Changelog: `CHANGELOG.md`
 - Dependency graph/status: `tasks/manifest.yaml`
 - Agent working contract: `AGENTS.md`
-
-Hardware and product-specific integrations are deliberately not the current execution priority.
