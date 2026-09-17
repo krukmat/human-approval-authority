@@ -107,6 +107,8 @@ function assertionEvidence(args: {
   digest: string;
   webAuthnChallenge: string;
   originOverride?: string;
+  rpIdOverride?: string;
+  credentialIdOverride?: Buffer;
   uv?: boolean;
   counter?: number;
 }) {
@@ -117,7 +119,7 @@ function assertionEvidence(args: {
     crossOrigin: false,
   }));
   const authenticatorData = Buffer.alloc(37);
-  createHash('sha256').update(rpId).digest().copy(authenticatorData, 0);
+  createHash('sha256').update(args.rpIdOverride ?? rpId).digest().copy(authenticatorData, 0);
   authenticatorData[32] = 0x01 | (args.uv === false ? 0 : 0x04);
   const counter = args.counter ?? 1;
   authenticatorData.writeUInt32BE(counter, 33);
@@ -132,7 +134,7 @@ function assertionEvidence(args: {
     signatureAlgorithm: 'ES256' as const,
     signature: encodeWebAuthnEvidenceProof({
       schema: 'haa.webauthn-proof.v1',
-      credentialId: b64url(args.f.credentialId),
+      credentialId: b64url(args.credentialIdOverride ?? args.f.credentialId),
       clientDataJSON: b64url(clientDataJSON),
       authenticatorData: b64url(authenticatorData),
       assertionSignature: b64url(signature),
@@ -185,13 +187,15 @@ test('WebAuthn registration requires exact origin and user verification', () => 
   f.store.close();
 });
 
-test('WebAuthn approval fails closed on wrong origin, wrong challenge, and UV=false', () => {
+test('WebAuthn approval fails closed on origin challenge UV RP and credential mismatch', () => {
   const f = fixture();
   const authenticatorId = enroll(f);
   for (const [suffix, mutate, expected] of [
     ['origin', { originOverride: 'http://evil.example' }, /WEBAUTHN_ORIGIN_MISMATCH/],
     ['challenge', { webAuthnChallenge: b64url('wrong') }, /WEBAUTHN_CHALLENGE_MISMATCH/],
     ['uv', { uv: false }, /WEBAUTHN_USER_VERIFICATION_REQUIRED/],
+    ['rp', { rpIdOverride: 'evil.example' }, /WEBAUTHN_RP_ID_MISMATCH/],
+    ['credential', { credentialIdOverride: Buffer.alloc(32, 7) }, /WEBAUTHN_CREDENTIAL_ID_MISMATCH/],
   ] as const) {
     const requestId = `req-wa-${suffix}`;
     const flow = approval(f, authenticatorId, requestId);
@@ -229,5 +233,30 @@ test('WebAuthn counter regression is rejected when authenticator exposes a count
       webAuthnChallenge: second.options.publicKey.challenge, counter: 3,
     }),
   }), /WEBAUTHN_COUNTER_REPLAY/);
+  f.store.close();
+});
+
+test('WebAuthn revoked authenticator and assertion replay cannot approve', () => {
+  const f = fixture();
+  const revokedId = enroll(f);
+  const revokedFlow = approval(f, revokedId, 'req-wa-revoked');
+  f.app.revokeAuthenticator('human-secret', revokedId);
+  assert.throws(() => f.app.submitEvidence({
+    apiKey: 'human-secret',
+    evidence: assertionEvidence({
+      f, authenticatorId: revokedId, requestId: 'req-wa-revoked', digest: revokedFlow.digest,
+      webAuthnChallenge: revokedFlow.options.publicKey.challenge, counter: 1,
+    }),
+  }), /AUTHENTICATOR_REVOKED/);
+  assert.equal(f.app.getRequest('agent-secret', 'req-wa-revoked').state, 'PENDING');
+
+  const activeId = enroll(f);
+  const replayFlow = approval(f, activeId, 'req-wa-replay');
+  const replayEvidence = assertionEvidence({
+    f, authenticatorId: activeId, requestId: 'req-wa-replay', digest: replayFlow.digest,
+    webAuthnChallenge: replayFlow.options.publicKey.challenge, counter: 0,
+  });
+  f.app.submitEvidence({ apiKey: 'human-secret', evidence: replayEvidence });
+  assert.throws(() => f.app.submitEvidence({ apiKey: 'human-secret', evidence: replayEvidence }), /REQUEST_NOT_PENDING:APPROVED/);
   f.store.close();
 });
