@@ -1,6 +1,6 @@
 # W7-T04 — Optional WebAuthn adapter spike
 
-Status: **IN PROGRESS — implementation complete through T04.8; physical gate T04.9 pending**
+Status: **DONE — physical gate PASS; decision KEEP_OPTIONAL**
 
 This spike evaluates WebAuthn as an additional HAA authenticator without changing protocol v1 or weakening the accepted native macOS assurance model.
 
@@ -25,7 +25,7 @@ macOS approver
     -> Secure Enclave signature
     -> user-verified-device-bound
 
-WebAuthn spike
+WebAuthn adapter
   HAA-signed typed intent
     -> browser-origin display
     -> WebAuthn UV=required
@@ -35,13 +35,13 @@ WebAuthn spike
 
 The WebAuthn assertion cryptographically binds to the exact HAA challenge digest. The browser-rendered action text is not promoted to a native trusted display: compromise of the web origin/DOM can misrepresent the human-visible claims even though it cannot change the HAA action that the assertion is bound to.
 
-WebAuthn `UV=required` proves that the authenticator reports user verification. HAA does not cryptographically learn which local verification modality was used. A physical operator may confirm Touch ID was used when the platform offers it, but the server must not turn that observation into a protocol-level Touch ID claim.
+WebAuthn `UV=required` proves that the authenticator reports user verification. HAA does not cryptographically learn which local verification modality was used. A physical operator may observe Touch ID when the platform offers it, but the server must not turn that observation into a protocol-level Touch ID claim.
 
 No biometric template, Touch ID data or biometric result is stored by HAA.
 
 ## Policy
 
-The adapter is disabled by default. Enabling it requires explicit configuration:
+The adapter remains disabled by default. Enabling it requires explicit configuration:
 
 ```text
 HAA_WEBAUTHN_ENABLED=1
@@ -58,7 +58,7 @@ HAA_WEBAUTHN_UI=1
 
 Production origins must be HTTPS. Plain HTTP is accepted only for `localhost`, matching the development secure-context exception used for local WebAuthn testing.
 
-The spike uses:
+The adapter uses:
 
 ```text
 userVerification          required
@@ -88,7 +88,7 @@ createdAt
 
 The generic HAA authenticator continues to hold only the public P-256 verification key and lifecycle status. This avoids adding WebAuthn-specific fields to protocol v1.
 
-Registration challenge state is also adapter-owned and short-lived. Registration IDs are single-use and principal-bound.
+Registration challenge state is adapter-owned and short-lived. Registration IDs are single-use and principal-bound.
 
 ## T04.3 — Registration ceremony
 
@@ -108,7 +108,7 @@ APPROVER credential
   -> atomically register generic authenticator + WebAuthn metadata
 ```
 
-Registration is fail-closed on replay, expiry, principal mismatch, origin mismatch, RP mismatch, missing UV/UP, unsupported key/attestation format and duplicate credential ID.
+Registration fails closed on replay, expiry, principal mismatch, origin mismatch, RP mismatch, missing UV/UP, unsupported key/attestation format and duplicate credential ID.
 
 ## T04.4 — HAA challenge binding
 
@@ -192,11 +192,9 @@ It separates the ceremony into three explicit operations:
 3. explicitly approve with WebAuthn user verification
 ```
 
-On the physical Mac gate, use Touch ID when the browser/platform offers it. The HAA evidence records `user-verified`; it does not claim that Touch ID was necessarily the verification modality.
-
 The page visibly warns that the action rendering is browser-origin protected and not equivalent to the native macOS trusted display. It does not claim device-bound assurance.
 
-The route is disabled unless `HAA_WEBAUTHN_UI=1`. It is no-store, frame-denied and CSP constrained. It is a spike UI, not a general login product.
+The route is disabled unless `HAA_WEBAUTHN_UI=1`. It is no-store, frame-denied and CSP constrained. It is an optional adapter UI, not a general login product.
 
 ## T04.8 — Automated negative-path gate
 
@@ -229,62 +227,77 @@ request/challenge expiry
 role separation
 ```
 
-The adapter adds no external npm dependency: CBOR parsing is deliberately bounded to the definite-length structures required by this spike and only accepts `none` attestation plus P-256/ES256 credentials. If WebAuthn is promoted beyond an optional spike, replacing or independently reviewing this parser against a mature WebAuthn implementation is an explicit T04.10 decision input rather than an implicit assurance upgrade.
+The adapter adds no external npm dependency: CBOR parsing is deliberately bounded to the definite-length structures required by this adapter and only accepts `none` attestation plus P-256/ES256 credentials.
 
 ## T04.9 — Physical browser gate
 
-Status: **READY / requires local human interaction**
+Status: **DONE / PASS**
 
-Run on the physical Mac:
-
-```bash
-npm run validate:webauthn-macos 2>&1 | tee w7-t04-webauthn-physical.txt
-```
-
-The validator records the local HAA Git SHA and then:
+Physical execution evidence supplied from the real Mac:
 
 ```text
-starts isolated HAA on localhost
-  -> creates PENDING request
-  -> proves executor blocked before approval
-  -> opens local browser UI
-  -> user registers platform credential (use Touch ID when offered)
-  -> user reviews exact claims
-  -> user approves with WebAuthn user verification (use Touch ID when offered)
-  -> HAA accepts user-verified evidence
-  -> executor obtains exact ExecutionGrant
-  -> request becomes CONSUMED exactly once
-```
-
-Expected terminal line:
-
-```text
+HAA SHA: 52d7c8430a0d2508067f44711bc3656ee12e5887
+✓ HAA WebAuthn validation server healthy
+✓ PENDING request created
+✓ Executor blocked before browser ceremony
+✓ Browser WebAuthn assertion accepted; request APPROVED
+✓ Exact ExecutionGrant issued after WebAuthn approval
+✓ Request CONSUMED exactly once
 PASS W7-T04.9: browser WebAuthn → Touch ID → user-verified HAA evidence → exact grant
 ```
 
-The literal PASS label names the intended physical test path. The cryptographic evidence itself proves `UV=required`, not the specific local biometric modality. The operator should report whether Touch ID was actually used when returning the physical log.
+The gate proves the real browser/platform WebAuthn path, `UV=required`, exact HAA challenge binding, grant issuance and one-shot consumption on a physical macOS host. The literal PASS label names the intended operator path; the cryptographic evidence itself proves `user-verified`, not which local biometric/PIN modality satisfied UV. No stronger Touch ID-specific protocol claim is recorded.
 
 ## T04.10 — Spike decision
 
-Status: **BLOCKED by T04.9**
+Status: **DONE — KEEP_OPTIONAL**
 
-Decision options remain:
+Decision: keep WebAuthn as a supported optional authenticator adapter, disabled by default. Do not replace the native macOS approver as the preferred high-assurance path.
+
+Rationale:
 
 ```text
-ADOPT
-KEEP_OPTIONAL
-REJECT
+Dimension                    Native macOS approver              WebAuthn adapter
+---------------------------  ---------------------------------  ---------------------------------
+Human verification           Touch ID-gated native ceremony     WebAuthn UV=required
+Display assurance             native trusted display             authenticated web origin / DOM
+Device-bound key claim        supported path                     not claimed
+Platform attestation          not claimed                        not claimed
+Portability                   Apple/macOS specific               browser/platform portable
+Operational prerequisites     local native app/provisioning      RP ID + exact origin + HTTPS
+Protocol impact               none                               none
+Observed physical path        PASS                               PASS
 ```
 
-The decision must weigh observed physical-browser behavior against these dimensions:
+`KEEP_OPTIONAL` is preferred over `ADOPT` because the WebAuthn browser display has a materially larger presentation trust boundary than the native trusted renderer, and the current adapter intentionally uses `attestation=none`. It is still useful where portability, deployment reach or browser-native UX outweigh those assurance differences.
 
-- assurance versus native macOS approver;
-- portability and browser reach;
-- user experience;
-- operational RP/origin/TLS requirements;
-- dependency/TCB impact;
-- maintenance cost;
-- whether the lower trusted-display assurance is acceptable for intended actions;
-- whether a production adoption should replace/review the dependency-free bounded CBOR parser with a mature WebAuthn implementation.
+`KEEP_OPTIONAL` is preferred over `REJECT` because the physical gate and automated security matrix demonstrate a working exact-action approval path with strict RP/origin/credential/challenge binding, user verification, revocation/replay controls and unchanged HAA execution semantics.
 
-No adoption decision is recorded before the physical gate. Until then WebAuthn remains optional and disabled by default.
+### Production-use boundary
+
+For high-risk actions where HAA relies on a trusted human-readable presentation boundary, prefer the native macOS approver or a future dedicated trusted-display authenticator. WebAuthn is suitable only when an authenticated web-origin display is an acceptable trust boundary for that action class.
+
+Before promoting WebAuthn from optional adapter to a broadly recommended production authenticator, separately evaluate:
+
+- replacing or independently reviewing the dependency-free bounded CBOR/WebAuthn parser against a mature implementation;
+- production RP ID/origin/TLS lifecycle and reverse-proxy policy;
+- browser UI integrity/deployment controls;
+- whether attestation is required for the intended assurance level.
+
+## Final outcome
+
+```text
+W7-T04.1   DONE
+W7-T04.2   DONE
+W7-T04.3   DONE
+W7-T04.4   DONE
+W7-T04.5   DONE
+W7-T04.6   DONE
+W7-T04.7   DONE
+W7-T04.8   DONE
+W7-T04.9   DONE / physical PASS
+W7-T04.10  DONE / KEEP_OPTIONAL
+W7-T04      DONE
+```
+
+The accepted W7/W8/W9 baselines remain closed; this optional adapter does not reopen protocol v1 or alter native macOS assurance semantics.
