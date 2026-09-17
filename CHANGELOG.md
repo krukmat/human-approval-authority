@@ -1,5 +1,27 @@
 # Changelog
 
+## Post-baseline optional WebAuthn adapter — 2026-09-17
+
+This work does **not** redefine the frozen HAA integration baseline or protocol-v1 package versions.
+
+Delivered:
+
+- optional WebAuthn authenticator/evidence adapter, disabled by default;
+- exact RP ID/origin/credential/challenge binding;
+- `UP` + `UV=required` enforcement with P-256/ES256 verification;
+- principal-bound single-use registration, authenticator revocation, assertion replay and counter-regression controls;
+- strict WebAuthn HTTP input envelopes and bounded credential fields;
+- browser approval UI with explicit web-origin display assurance wording;
+- physical macOS browser/platform validation on HAA SHA `52d7c8430a0d2508067f44711bc3656ee12e5887` through exact `ExecutionGrant` issuance and one-shot `CONSUMED` state.
+
+Decision: `KEEP_OPTIONAL`.
+
+The native macOS Secure Enclave approver remains the preferred higher-assurance path for high-risk actions because it provides the native trusted-display/device-bound path. WebAuthn remains useful where browser portability and reach justify a web-origin presentation trust boundary. HAA records `user-verified`; it does not claim which local verification modality satisfied WebAuthn UV.
+
+Before broader production promotion, the bounded dependency-free CBOR/WebAuthn parser should be replaced or independently reviewed against a mature implementation and production RP/origin/TLS operations should be validated.
+
+See `docs/W7-T04-WEBAUTHN-SPIKE.md`.
+
 ## HAA integration baseline 0.1.0 — 2026-09-15
 
 Immutable code baseline: `e68b6ad8b8b3901f095e47111aa5545c132cf964`
@@ -33,9 +55,9 @@ Validation references:
 Known scoped residuals:
 
 - hardware authenticator work remains deferred;
-- WebAuthn remains an optional deferred adapter;
+- WebAuthn is now an optional physically validated adapter kept disabled by default;
 - Apple Secure Enclave-backed signing is not represented as remote/platform attestation;
 - network-edge TLS/rate limiting remain operator-managed deployment controls;
 - administrative credential audit is separate from the request-audit checkpoint chain.
 
-This baseline is the input to W9 external adoption work. W9 must validate HAA from outside the monorepo rather than expanding the core without evidence from a real consumer.
+This baseline is the input to W9 external adoption work. W9 validates HAA from outside the monorepo rather than expanding the core without evidence from a real consumer.
