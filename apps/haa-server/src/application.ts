@@ -25,6 +25,17 @@ import {
   type Signer,
 } from '../../../packages/core/src/index.ts';
 import { SqliteStore, type ClientRole } from '../../../packages/persistence-sqlite/src/index.ts';
+import {
+  WebAuthnEvidenceVerifier,
+  WebAuthnStore,
+  createRegistrationChallenge,
+  createWebAuthnAuthenticationOptions,
+  createWebAuthnRegistrationOptions,
+  normalizeWebAuthnPolicy,
+  verifyWebAuthnRegistration,
+  type WebAuthnPolicy,
+  type WebAuthnRegistrationCredentialJSON,
+} from '../../../packages/webauthn/src/index.ts';
 
 export interface AuthorityVerificationKey {
   algorithm: SignatureAlgorithm;
@@ -65,6 +76,7 @@ export interface HaaApplicationOptions {
   authorityKeyResolver?: (keyId: string) => AuthorityVerificationKey | null;
   profiles?: ActionProfileRegistry;
   evidenceVerifiers?: EvidenceVerifier[];
+  webAuthn?: WebAuthnPolicy;
 }
 
 export class HaaApplication {
@@ -73,6 +85,8 @@ export class HaaApplication {
   readonly profiles: ActionProfileRegistry;
   readonly verifiers = new Map<string, EvidenceVerifier>();
   private readonly authorityKeyResolver: (keyId: string) => AuthorityVerificationKey | null;
+  private readonly webAuthnPolicy: Required<WebAuthnPolicy> | null;
+  private readonly webAuthnStore: WebAuthnStore | null;
 
   constructor(options: HaaApplicationOptions) {
     this.store = options.store;
@@ -86,6 +100,19 @@ export class HaaApplication {
       new GenericSignedEvidenceVerifier('haa-hardware-v1', 'user-verified-device-bound'),
     ];
     for (const verifier of options.evidenceVerifiers ?? defaults) this.verifiers.set(verifier.type, verifier);
+
+    if (options.webAuthn) {
+      this.webAuthnPolicy = normalizeWebAuthnPolicy(options.webAuthn);
+      this.webAuthnStore = new WebAuthnStore(this.store);
+      this.verifiers.set('webauthn-v1', new WebAuthnEvidenceVerifier(this.webAuthnPolicy, {
+        get: (authenticatorId) => this.webAuthnStore!.getCredential(authenticatorId),
+        advanceCounter: (authenticatorId, expectedCounter, nextCounter) => this.webAuthnStore!
+          .advanceCounter(authenticatorId, expectedCounter, nextCounter),
+      }));
+    } else {
+      this.webAuthnPolicy = null;
+      this.webAuthnStore = null;
+    }
   }
 
   registerClient(
@@ -118,6 +145,123 @@ export class HaaApplication {
     };
     this.store.saveAuthenticator(full);
     return full;
+  }
+
+  beginWebAuthnRegistration(apiKey: string, now = new Date()) {
+    const actor = this.authenticateAs(apiKey, 'APPROVER');
+    const { policy, store } = this.requireWebAuthn();
+    const registrationId = randomUUID();
+    const challenge = createRegistrationChallenge();
+    const expiresAt = new Date(now.getTime() + policy.registrationTtlMs).toISOString();
+    store.saveRegistration({
+      registrationId,
+      principalId: actor,
+      challenge,
+      rpId: policy.rpId,
+      origin: policy.origin,
+      expiresAt,
+      consumed: false,
+    });
+    const existing = store.listCredentialsForPrincipal(actor);
+    return {
+      registrationId,
+      expiresAt,
+      publicKey: createWebAuthnRegistrationOptions({
+        policy,
+        principalId: actor,
+        challenge,
+        excludeCredentials: existing,
+      }),
+    };
+  }
+
+  finishWebAuthnRegistration(args: {
+    apiKey: string;
+    registrationId: string;
+    credential: WebAuthnRegistrationCredentialJSON;
+    now?: Date;
+  }) {
+    const actor = this.authenticateAs(args.apiKey, 'APPROVER');
+    const now = args.now ?? new Date();
+    const { policy, store } = this.requireWebAuthn();
+    const registration = store.getRegistration(args.registrationId);
+    if (!registration) throw new Error('WEBAUTHN_REGISTRATION_NOT_FOUND');
+    if (registration.consumed) throw new Error('WEBAUTHN_REGISTRATION_REPLAY');
+    if (registration.principalId !== actor) throw new Error('FORBIDDEN');
+    if (Date.parse(registration.expiresAt) <= now.getTime()) throw new Error('WEBAUTHN_REGISTRATION_EXPIRED');
+    if (registration.rpId !== policy.rpId || registration.origin !== policy.origin) throw new Error('WEBAUTHN_POLICY_MISMATCH');
+
+    const verified = verifyWebAuthnRegistration({
+      credential: args.credential,
+      expectedChallenge: registration.challenge,
+      policy,
+    });
+    if (store.getCredentialByCredentialId(verified.credentialId)) throw new Error('WEBAUTHN_CREDENTIAL_ALREADY_REGISTERED');
+
+    const authenticatorId = `webauthn-${randomUUID()}`;
+    const createdAt = now.toISOString();
+    const authenticator: AuthenticatorRecord = {
+      schema: 'haa.authenticator.v1',
+      id: authenticatorId,
+      principalId: actor,
+      type: 'webauthn-v1',
+      publicKeyPem: verified.publicKeyPem,
+      signatureAlgorithm: 'ES256',
+      status: 'ACTIVE',
+      createdAt,
+    };
+    const metadata = {
+      authenticatorId,
+      credentialId: verified.credentialId,
+      principalId: actor,
+      rpId: policy.rpId,
+      origin: policy.origin,
+      signCount: verified.signCount,
+      transports: verified.transports,
+      aaguid: verified.aaguid,
+      createdAt,
+    };
+    store.completeRegistration({ registrationId: args.registrationId, authenticator, metadata });
+    return {
+      authenticator,
+      credential: metadata,
+      assurance: {
+        humanVerificationLevel: 'user-verified' as const,
+        trustedDisplay: 'web-origin' as const,
+        platformAttestation: false,
+      },
+    };
+  }
+
+  createWebAuthnApprovalOptions(args: {
+    apiKey: string;
+    requestId: string;
+    authenticatorId: string;
+    challengeDigest: string;
+  }) {
+    const actor = this.authenticateAs(args.apiKey, 'APPROVER');
+    const { policy, store } = this.requireWebAuthn();
+    const request = this.mustRequest(args.requestId);
+    if (request.intent.approverPrincipalId !== actor) throw new Error('FORBIDDEN');
+    if (request.state !== 'PENDING') throw new Error(`REQUEST_NOT_PENDING:${request.state}`);
+
+    const authenticator = this.store.getAuthenticator(args.authenticatorId);
+    if (!authenticator || authenticator.status !== 'ACTIVE') throw new Error('AUTHENTICATOR_NOT_ACTIVE');
+    if (authenticator.type !== 'webauthn-v1') throw new Error('AUTHENTICATOR_TYPE_MISMATCH');
+    if (authenticator.principalId !== actor) throw new Error('AUTHENTICATOR_PRINCIPAL_MISMATCH');
+    const metadata = store.getCredential(args.authenticatorId);
+    if (!metadata) throw new Error('WEBAUTHN_METADATA_NOT_FOUND');
+
+    const storedChallenge = this.store.getChallenge(args.challengeDigest);
+    if (!storedChallenge || storedChallenge.consumed) throw new Error('CHALLENGE_NOT_ACTIVE');
+    if (challengeDigest(storedChallenge.challenge) !== args.challengeDigest) throw new Error('CHALLENGE_DIGEST_MISMATCH');
+    const payload = decodeChallengePayload(storedChallenge.challenge);
+    if (payload.requestId !== request.id || payload.authenticatorId !== args.authenticatorId) throw new Error('CHALLENGE_BINDING_MISMATCH');
+
+    return {
+      challengeDigest: args.challengeDigest,
+      publicKey: createWebAuthnAuthenticationOptions({ policy, challengeDigest: args.challengeDigest, credential: metadata }),
+    };
   }
 
   revokeAuthenticator(apiKey: string, authenticatorId: string, now = new Date()): void {
@@ -393,6 +537,11 @@ export class HaaApplication {
     const request = this.mustRequest(requestId);
     this.assertParticipant(actor, request);
     return this.store.listAudit(requestId);
+  }
+
+  private requireWebAuthn(): { policy: Required<WebAuthnPolicy>; store: WebAuthnStore } {
+    if (!this.webAuthnPolicy || !this.webAuthnStore) throw new Error('WEBAUTHN_DISABLED');
+    return { policy: this.webAuthnPolicy, store: this.webAuthnStore };
   }
 
   private authenticateAs(apiKey: string, role: ClientRole): string {
