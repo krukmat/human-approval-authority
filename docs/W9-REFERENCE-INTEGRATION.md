@@ -1,6 +1,6 @@
 # W9 — Reference Integration / Adoption Gate
 
-Status: **ACTIVE**
+Status: **CLOSED / PASS_WITH_FOLLOWUPS**
 
 Goal: prove that HAA can be consumed as an independent product from outside its own monorepo, using only public contracts and without weakening the HAA-only baseline closed in W8.
 
@@ -22,147 +22,100 @@ W9 is deliberately an adoption wave, not another core-hardening wave.
 
 Status: **DONE**
 
-Depends on: `W8-T09`.
-
 Delivered:
 
-- immutable W9 code baseline `e68b6ad8b8b3901f095e47111aa5545c132cf964`;
+- immutable W9 starting baseline `e68b6ad8b8b3901f095e47111aa5545c132cf964`;
 - product/package version map;
 - `CHANGELOG.md`;
 - `docs/RELEASE-BASELINE.md`;
-- machine-specific Apple Development Team removed before freeze;
-- Xcode project restored to the signing-neutral form used by the physical W8 gate.
-
-Acceptance: the starting product state is identified by immutable SHA and its protocol/SDK versions are explicit.
+- signing-neutral Xcode project baseline.
 
 ### W9-T02 — Minimal external integration contract
 
 Status: **DONE**
 
-Depends on: `W9-T01`.
-
 Delivered: `docs/EXTERNAL-INTEGRATION.md`.
 
-Acceptance:
-
-- public integration surfaces are explicit;
-- REQUESTER / APPROVER / EXECUTOR responsibilities are explicit;
-- minimal request → ceremony → authorize → detached verify → execute path is documented;
-- crash/idempotency and authority-key trust boundaries are explicit;
-- no private HAA implementation import is part of the contract.
+Public integration surfaces, actor separation, authorization flow, detached verification, failure handling and idempotency boundaries are explicit.
 
 ### W9-T03 — Reference external consumer
 
-Status: **READY**
+Status: **DONE**
 
-Depends on: `W9-T02`.
+Reference consumer: `krukmat/verifiable-event-ledger`.
 
-Create or adapt one repository outside `human-approval-authority` that consumes HAA as if it were a third-party product.
-
-First slice may use `demo.action.v1` strictly to prove package/API separation.
-
-Acceptance:
-
-- consumer lives outside the HAA monorepo;
-- uses only HTTP / `@haa/protocol` / `@haa/sdk` and documented operator/authenticator surfaces;
-- no source copy/private import/workspace dependency into HAA;
-- separate requester/executor credentials are used;
-- APPROVED request state alone cannot trigger the side effect.
+The consumer lives outside the HAA monorepo, uses public HTTP contracts only, has separate requester/executor credentials, and cannot execute from APPROVED state alone.
 
 ### W9-T04 — Real ActionProfile
 
-Status: **BLOCKED**
+Status: **DONE**
 
-Depends on: `W9-T03`.
+The existing `git.merge.v1` profile was validated as sufficient for the reference consumer. No new profile or protocol-v1 change was required.
 
-Replace the integration-smoke profile with one real consumer action.
-
-Acceptance:
-
-- typed and versioned profile;
-- strict payload/precondition allowlists;
-- all authorization-relevant semantics are digest-bound;
-- trusted display exposes the human-significant fields;
-- unknown fields fail closed.
+See `docs/W9-GIT-MERGE-PROFILE-REVIEW.md`.
 
 ### W9-T05 — External executor integration
 
-Status: **BLOCKED**
+Status: **DONE_WITH_FOLLOWUP**
 
-Depends on: `W9-T03`, `W9-T04`.
+The external Python executor:
 
-Implement the actual executor boundary outside HAA.
-
-Acceptance:
-
-- reads actual target state from the external source of truth;
-- uses durable/fresh execution ID according to retry semantics;
+- reads actual Git state;
+- reconstructs the exact `git.merge.v1` action;
 - calls `authorizeAndConsume` before mutation;
-- detached-verifies `ExecutionGrant` with trusted ACTIVE authority metadata;
-- performs the side effect only after verification;
-- side effect has an explicit idempotency/recovery strategy.
+- detached-verifies the returned ExecutionGrant against ACTIVE authority metadata;
+- rechecks local Git state before mutation;
+- restricts the side effect to `git merge --ff-only`.
+
+A P2 adoption follow-up remains: automate post-merge same-execution reconciliation. Current behavior is fail-closed and cannot duplicate execution.
 
 ### W9-T06 — External integration E2E
 
-Status: **BLOCKED**
+Status: **DONE**
 
-Depends on: `W9-T05`.
-
-Prove the complete external path:
+Physical macOS run on 2026-09-17 proved:
 
 ```text
-external requester
-  -> HAA
-  -> human ceremony
-  -> exact ExecutionGrant
-  -> external executor
-  -> real bounded side effect
+external VEL requester
+  -> HAA PENDING
+  -> executor denied before approval
+  -> trusted Git merge display
+  -> human Touch ID approval
+  -> ApprovalReceipt
+  -> external authorizeAndConsume
+  -> detached grant verification
+  -> exact temporary-clone fast-forward merge
+  -> CONSUMED
+  -> exactly one consumption audit event
 ```
 
-Required negative cases:
+Physical external VEL baseline:
 
-- REJECT;
-- mutated action;
-- stale precondition;
-- wrong executor audience;
-- replay / different execution ID after consumption;
-- same execution ID recovery/idempotency.
+`faa3561a0796c088ad4d7a8b6f9eeb79b22d8565`
 
-Acceptance: only the exact approved action can execute under the intended executor audience and current preconditions.
+The required deterministic negative invariants remain covered by the automated HAA service/core gates and external executor tests rather than duplicating already-closed W8 physical ceremony cases.
 
 ### W9-T07 — Adoption-gap review
 
-Status: **BLOCKED**
+Status: **DONE**
 
-Depends on: `W9-T06`.
+See `docs/W9-ADOPTION-REVIEW.md`.
 
-Classify each friction discovered by real integration as:
-
-```text
-CORE_FIX
-INTEGRATION_FIX
-DOCS
-ACCEPTED_RISK
-NO_ACTION
-```
-
-Acceptance: no core change is justified only by convenience or speculation; every proposed HAA change has concrete integration evidence.
+No BLOCKING or P1 adoption findings remain. Concrete integration friction was classified without expanding HAA core speculatively.
 
 ### W9-T08 — Integration-readiness gate
 
-Status: **BLOCKED**
-
-Depends on: `W9-T07`.
+Status: **DONE / PASS_WITH_FOLLOWUPS**
 
 Final acceptance:
 
 - external E2E green;
 - no private HAA dependency in the consumer;
 - no open BLOCKING/P1 adoption finding;
-- real ActionProfile trusted display is complete;
+- real ActionProfile trusted display complete;
 - execution requires detached-valid grant;
 - failure/rejection paths fail closed;
-- deployment and credential assumptions are documented;
+- deployment and credential assumptions documented;
 - HAA remains consumer-agnostic.
 
 ## Dependency view
@@ -177,24 +130,26 @@ W9-T01 Release baseline        DONE
 W9-T02 Integration contract    DONE
     |
     v
-W9-T03 External consumer       READY
+W9-T03 External consumer       DONE
     |
     v
-W9-T04 Real ActionProfile
+W9-T04 Real ActionProfile      DONE
     |
     v
-W9-T05 External executor
+W9-T05 External executor       DONE_WITH_FOLLOWUP
     |
     v
-W9-T06 External E2E
+W9-T06 External E2E            DONE
     |
     v
-W9-T07 Adoption-gap review
+W9-T07 Adoption review         DONE
     |
     v
-W9-T08 Integration-readiness gate
+W9-T08 Readiness gate          DONE / PASS_WITH_FOLLOWUPS
 ```
 
-## Current decision point
+## Outcome
 
-The next action is W9-T03: select the first external consumer repository. That selection should optimize for a small, auditable real side effect rather than breadth of features.
+W9 demonstrated that HAA can be adopted from another repository and language without private implementation coupling or a new HAA core feature.
+
+The remaining P2 follow-ups are adoption/developer-experience improvements, not security gate failures. Hardware W5/W6 remains deferred/blocked and WebAuthn W7-T04 remains optional/deferred.
