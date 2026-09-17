@@ -22,13 +22,13 @@ ExecutionGrant → bounded Executor
 
 ## Authenticator paths
 
-- **macOS:** physically validated Touch ID-gated P-256 signing with a device-bound Secure Enclave key.
+- **macOS native:** physically validated Touch ID-gated P-256 signing with a device-bound Secure Enclave key; preferred higher-assurance path for high-risk actions.
+- **WebAuthn:** physically validated optional browser/platform adapter with `UV=required`; `user-verified` assurance, browser-origin display, disabled by default.
 - **DIY hardware:** deferred by product priority.
-- Future authenticators plug into the evidence-verifier boundary without changing core execution semantics.
 
 The HAA core never handles fingerprint images/templates and contains no Apple/ESP32-specific policy logic.
 
-`user-verified-device-bound` describes the supported authenticator path and enrolled device-bound key behavior. HAA v1 does **not** independently perform Apple Secure Enclave/platform attestation; see `docs/AUTHENTICATOR-ASSURANCE.md`.
+`user-verified-device-bound` describes the native macOS authenticator path and enrolled device-bound key behavior. HAA v1 does **not** independently perform Apple Secure Enclave/platform attestation. The optional WebAuthn path does not claim native trusted display, device binding, specific biometric modality or platform attestation. See `docs/AUTHENTICATOR-ASSURANCE.md` and `docs/W7-T04-WEBAUTHN-SPIKE.md`.
 
 ## Ceremony semantics
 
@@ -58,26 +58,28 @@ W0-W4   foundation/core/service/Apple/agent path     DONE
 W5      hardware POC                                 DEFERRED
 W6      hardware hardening                           BLOCKED by W5
 W7      software production hardening                DONE
+  T04   optional WebAuthn adapter                     DONE / KEEP_OPTIONAL
 W8      universal ceremony + physical macOS gate     DONE
-W9      reference integration / adoption gate        ACTIVE
+W9      reference integration / adoption gate        DONE / PASS_WITH_FOLLOWUPS
 ```
 
-W7 closed with independent review `PASS_WITH_FOLLOWUPS`, zero remaining BLOCKING/P1 findings after remediation. W8 closed on a real Apple Silicon Mac with Secure Enclave / Touch ID and validated APPROVE, rejection semantics and the bounded executor path.
+W7 closed with independent review `PASS_WITH_FOLLOWUPS`, zero remaining BLOCKING/P1 findings after remediation. The optional W7-T04 WebAuthn spike later completed its physical browser gate on HAA SHA `52d7c8430a0d2508067f44711bc3656ee12e5887` and was retained as `KEEP_OPTIONAL`.
 
-W9 now tests HAA as an **external product** rather than continuing to harden the core speculatively:
+W8 closed on a real Apple Silicon Mac with Secure Enclave / Touch ID and validated APPROVE, rejection semantics and the bounded executor path.
+
+W9 validated HAA as an external product boundary using `krukmat/verifiable-event-ledger`:
 
 ```text
-W9-T01 release baseline                  DONE
-W9-T02 external integration contract     DONE
-W9-T03 reference external consumer       READY
-W9-T04 real ActionProfile                BLOCKED by T03
-W9-T05 external executor                 BLOCKED
-W9-T06 external E2E                      BLOCKED
-W9-T07 adoption-gap review               BLOCKED
-W9-T08 integration-readiness gate        BLOCKED
+external requester
+  -> HAA
+  -> physical human ceremony
+  -> exact ExecutionGrant
+  -> detached-verifying external Python executor
+  -> bounded git merge --ff-only side effect
+  -> CONSUMED exactly once
 ```
 
-The frozen W9 code baseline is `e68b6ad8b8b3901f095e47111aa5545c132cf964`. See `docs/RELEASE-BASELINE.md` and `docs/W9-REFERENCE-INTEGRATION.md`.
+W9 finished `PASS_WITH_FOLLOWUPS`; remaining findings are non-blocking adoption/DX follow-ups. The frozen W9 starting code baseline is `e68b6ad8b8b3901f095e47111aa5545c132cf964`. See `docs/RELEASE-BASELINE.md`, `docs/W9-REFERENCE-INTEGRATION.md` and `docs/W9-ADOPTION-REVIEW.md`.
 
 ## Self-host
 
@@ -115,37 +117,7 @@ npm run validate:macos-ceremony -- --case escape
 npm run validate:macos-ceremony -- --case window-close
 npm run validate:macos-ceremony -- --case timeout
 npm run validate:macos-ceremony -- --case challenge-expired
+npm run validate:webauthn-macos
 ```
 
-The physical W8 gate is recorded in `docs/W8-PHYSICAL-CEREMONY-GATE.md`.
-
-## Security posture
-
-HAA is suitable for internal pilot/integration work under its documented trust assumptions. It is not presented as an Internet-exposed/compliance-ready managed service.
-
-Important boundaries remain explicit:
-
-- Secure Enclave-backed signing is not claimed as remote/platform attestation;
-- operator-managed edge controls provide TLS/rate limiting/network exposure protection;
-- hardware authenticator hardening remains deferred;
-- administrative credential audit remains separate from request-audit checkpoint evidence;
-- a receipt or `APPROVED` request state never authorizes execution.
-
-## Project control
-
-- Architecture: `docs/ARCHITECTURE.md`
-- Protocol v1: `docs/PROTOCOL-V1.md`
-- Security invariants: `docs/SECURITY.md`
-- Authenticator assurance: `docs/AUTHENTICATOR-ASSURANCE.md`
-- Production-readiness gate: `docs/W7-PRODUCTION-READINESS.md`
-- W8 ceremony contract: `docs/W8-CEREMONY-OUTCOMES.md`
-- W8 physical gate: `docs/W8-PHYSICAL-CEREMONY-GATE.md`
-- Frozen release baseline: `docs/RELEASE-BASELINE.md`
-- External integration contract: `docs/EXTERNAL-INTEGRATION.md`
-- W9 adoption wave: `docs/W9-REFERENCE-INTEGRATION.md`
-- Completed HAA-only roadmap: `docs/HAA-ACTIVE-ROADMAP.md`
-- Self-hosting: `docs/SELF-HOSTING.md`
-- Current status: `docs/STATUS.md`
-- Changelog: `CHANGELOG.md`
-- Dependency graph/status: `tasks/manifest.yaml`
-- Agent working contract: `AGENTS.md`
+The physical W8 native ceremony gate is recorded in `docs/W8-PHYSICAL-CEREMONY-GATE.md`. The optional WebAuthn physical gate and adoption decision are recorded in `docs/W7-T04-WEBAUTHN-SPIKE.md`.
