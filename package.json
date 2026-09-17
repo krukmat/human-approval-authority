@@ -24,6 +24,7 @@
     "validate:agent-macos": "node scripts/validate-agent-macos-e2e.mjs",
     "validate:macos-ceremony": "node scripts/validate-macos-ceremony-e2e.mjs",
     "validate:external-vel-macos": "node scripts/validate-external-vel-macos-e2e.mjs",
+    "validate:webauthn-macos": "node scripts/validate-webauthn-macos-e2e.mjs",
     "provision:client": "node --experimental-strip-types scripts/provision-client.mjs",
     "rotate:client": "node --experimental-strip-types scripts/rotate-client.mjs",
     "disable:client": "node --experimental-strip-types scripts/disable-client.mjs",
