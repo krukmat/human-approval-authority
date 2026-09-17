@@ -49,7 +49,17 @@ tasks:
   - {id: W7-T01, wave: W7, title: "Protocol/version compatibility freeze", depends_on: [W4-T05], status: DONE}
   - {id: W7-T02, wave: W7, title: "Docker/self-host package", depends_on: [W2-T09, W7-T01], status: DONE}
   - {id: W7-T03, wave: W7, title: "Publishable TypeScript SDK package", depends_on: [W4-T01, W7-T01], status: DONE}
-  - {id: W7-T04, wave: W7, title: "Optional WebAuthn adapter spike", depends_on: [W7-T01], status: DEFERRED_OPTIONAL}
+  - {id: W7-T04, wave: W7, title: "Optional WebAuthn adapter spike", depends_on: [W7-T01], status: IN_PROGRESS}
+  - {id: W7-T04.1, wave: W7, title: "WebAuthn assurance contract", depends_on: [W7-T01], status: DONE}
+  - {id: W7-T04.2, wave: W7, title: "WebAuthn authenticator model", depends_on: [W7-T04.1], status: DONE}
+  - {id: W7-T04.3, wave: W7, title: "WebAuthn registration ceremony", depends_on: [W7-T04.2], status: DONE}
+  - {id: W7-T04.4, wave: W7, title: "Approval challenge binding", depends_on: [W7-T04.3], status: DONE}
+  - {id: W7-T04.5, wave: W7, title: "WebAuthn assertion verifier", depends_on: [W7-T04.4], status: DONE}
+  - {id: W7-T04.6, wave: W7, title: "WebAuthn evidence adapter", depends_on: [W7-T04.5], status: DONE}
+  - {id: W7-T04.7, wave: W7, title: "Browser approval UI", depends_on: [W7-T04.6], status: DONE}
+  - {id: W7-T04.8, wave: W7, title: "WebAuthn negative-path tests", depends_on: [W7-T04.7], status: DONE}
+  - {id: W7-T04.9, wave: W7, title: "Physical browser gate", depends_on: [W7-T04.8], status: READY}
+  - {id: W7-T04.10, wave: W7, title: "WebAuthn spike adoption decision", depends_on: [W7-T04.9], status: BLOCKED}
   - {id: W7-T05, wave: W7, title: "Final cross-model security/architecture review", depends_on: [W7-T01, W7-T02, W7-T03], status: DONE}
   - {id: W7-T06, wave: W7, title: "Runtime API schemas and bounded inputs", depends_on: [W2-T09, W7-T01], status: DONE}
   - {id: W7-T07, wave: W7, title: "Deterministic dependency and build chain", depends_on: [W7-T02, W7-T03], status: DONE}
