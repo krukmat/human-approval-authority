@@ -2,7 +2,9 @@ import Fastify from 'fastify';
 import { z } from 'zod';
 import type { ActionSpec, ApprovalEvidence, AuthenticatorRecord, JsonValue } from '../../../packages/protocol/src/index.ts';
 import type { SignatureAlgorithm } from '../../../packages/core/src/index.ts';
+import type { WebAuthnRegistrationCredentialJSON } from '../../../packages/webauthn/src/index.ts';
 import type { HaaApplication } from './application.ts';
+import { webAuthnApprovalPage } from './webauthn-ui.ts';
 
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_STRING = 4096;
@@ -10,9 +12,11 @@ const MAX_IDENTIFIER = 128;
 const MAX_JSON_DEPTH = 12;
 const MAX_JSON_KEYS = 128;
 const MAX_JSON_ARRAY = 128;
+const MAX_WEBAUTHN_BLOB = 48 * 1024;
 
 const identifier = z.string().min(1).max(MAX_IDENTIFIER).regex(/^[A-Za-z0-9._:-]+$/);
 const boundedString = z.string().max(MAX_STRING);
+const base64urlBlob = z.string().min(1).max(MAX_WEBAUTHN_BLOB).regex(/^[A-Za-z0-9_-]+$/);
 
 function isBoundedJson(value: unknown, depth = 0): value is JsonValue {
   if (depth > MAX_JSON_DEPTH) return false;
@@ -79,7 +83,7 @@ const evidenceSchema = z.object({
   requestId: identifier,
   challengeDigest: boundedString.min(1),
   signatureAlgorithm: z.enum(['Ed25519', 'ES256']),
-  signature: z.string().min(1).max(16 * 1024),
+  signature: z.string().min(1).max(48 * 1024),
   counter: z.number().int().nonnegative().optional(),
 }).strict();
 
@@ -90,6 +94,26 @@ const authorizeSchema = z.object({
 }).strict();
 
 const idParamsSchema = z.object({ id: identifier }).strict();
+const emptyObjectSchema = z.object({}).strict();
+const webAuthnCredentialSchema = z.object({
+  id: base64urlBlob,
+  rawId: base64urlBlob,
+  type: z.literal('public-key'),
+  response: z.object({
+    clientDataJSON: base64urlBlob,
+    attestationObject: base64urlBlob,
+    transports: z.array(z.string().min(1).max(64)).max(16).optional(),
+  }).strict(),
+}).strict();
+const webAuthnRegistrationVerifySchema = z.object({
+  registrationId: identifier,
+  credential: webAuthnCredentialSchema,
+}).strict();
+const webAuthnAuthenticationOptionsSchema = z.object({
+  requestId: identifier,
+  authenticatorId: identifier,
+  challengeDigest: boundedString.min(1),
+}).strict();
 
 function apiKey(headers: Record<string, unknown>): string {
   const value = headers['x-api-key'];
@@ -112,6 +136,7 @@ export interface HttpServerOptions {
     createdAt: string;
     retiredAt?: string;
   }>;
+  webAuthnUi?: boolean;
 }
 
 export function buildHttpServer(app: HaaApplication, options: HttpServerOptions = {}) {
@@ -122,7 +147,7 @@ export function buildHttpServer(app: HaaApplication, options: HttpServerOptions 
     const status = message === 'UNAUTHORIZED' ? 401
       : message === 'FORBIDDEN' || message === 'SELF_APPROVAL_FORBIDDEN' ? 403
       : message.includes('NOT_FOUND') ? 404
-      : message.includes('MISMATCH') || message.includes('STALE') || message.includes('EXPIRED') || message.includes('NOT_APPROVED') || message.includes('NOT_PENDING') ? 409
+      : message.includes('MISMATCH') || message.includes('STALE') || message.includes('EXPIRED') || message.includes('REPLAY') || message.includes('NOT_APPROVED') || message.includes('NOT_PENDING') ? 409
       : 400;
     reply.code(status).send({ error: message });
   });
@@ -169,6 +194,30 @@ export function buildHttpServer(app: HaaApplication, options: HttpServerOptions 
     reply.code(204).send();
   });
 
+  server.post('/v1/webauthn/registration/options', async (request) => {
+    parse(emptyObjectSchema, request.body ?? {});
+    return app.beginWebAuthnRegistration(apiKey(request.headers));
+  });
+
+  server.post('/v1/webauthn/registration/verify', async (request) => {
+    const body = parse(webAuthnRegistrationVerifySchema, request.body);
+    return app.finishWebAuthnRegistration({
+      apiKey: apiKey(request.headers),
+      registrationId: body.registrationId,
+      credential: body.credential as WebAuthnRegistrationCredentialJSON,
+    });
+  });
+
+  server.post('/v1/webauthn/authentication/options', async (request) => {
+    const body = parse(webAuthnAuthenticationOptionsSchema, request.body);
+    return app.createWebAuthnApprovalOptions({
+      apiKey: apiKey(request.headers),
+      requestId: body.requestId,
+      authenticatorId: body.authenticatorId,
+      challengeDigest: body.challengeDigest,
+    });
+  });
+
   server.post('/v1/approval-requests/:id/challenges', async (request) => {
     const { id } = parse(idParamsSchema, request.params);
     const body = parse(challengeRequestSchema, request.body);
@@ -207,6 +256,17 @@ export function buildHttpServer(app: HaaApplication, options: HttpServerOptions 
     const { id } = parse(idParamsSchema, request.params);
     return app.listAudit(apiKey(request.headers), id);
   });
+
+  if (options.webAuthnUi) {
+    server.get('/webauthn/approve', async (_request, reply) => {
+      reply
+        .header('cache-control', 'no-store')
+        .header('x-frame-options', 'DENY')
+        .header('content-security-policy', "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+        .type('text/html; charset=utf-8')
+        .send(webAuthnApprovalPage());
+    });
+  }
 
   return server;
 }
