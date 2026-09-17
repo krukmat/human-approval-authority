@@ -16,6 +16,13 @@ const authorityOptions = {
   ...(process.env.HAA_AUTHORITY_KEYRING_FILE ? { keyRingFile: process.env.HAA_AUTHORITY_KEYRING_FILE } : {}),
 };
 const authorityKeyRing = loadOrCreateAuthorityKeyRing(authorityOptions);
+const webAuthn = process.env.HAA_WEBAUTHN_ENABLED === '1'
+  ? {
+      rpId: process.env.HAA_WEBAUTHN_RP_ID ?? 'localhost',
+      origin: process.env.HAA_WEBAUTHN_ORIGIN ?? `http://localhost:${binding.port}`,
+      rpName: process.env.HAA_WEBAUTHN_RP_NAME ?? 'Human Approval Authority',
+    }
+  : undefined;
 const app = new HaaApplication({
   store,
   authoritySigner: authorityKeyRing.signer,
@@ -23,6 +30,7 @@ const app = new HaaApplication({
     const key = authorityKeyRing.resolve(keyId);
     return key ? { algorithm: key.algorithm, publicKeyPem: key.publicKeyPem } : null;
   },
+  ...(webAuthn ? { webAuthn } : {}),
 });
 
 if (process.env.HAA_DEV_BOOTSTRAP === '1') {
@@ -31,5 +39,8 @@ if (process.env.HAA_DEV_BOOTSTRAP === '1') {
   app.registerClient(process.env.HAA_EXECUTOR_ID ?? 'executor-dev', process.env.HAA_EXECUTOR_KEY ?? 'executor-dev-secret', ['EXECUTOR']);
 }
 
-const server = buildHttpServer(app, { authorityKeys: () => authorityKeyRing.listPublicKeys() });
+const server = buildHttpServer(app, {
+  authorityKeys: () => authorityKeyRing.listPublicKeys(),
+  webAuthnUi: Boolean(webAuthn) && process.env.HAA_WEBAUTHN_UI === '1',
+});
 await server.listen({ port: binding.port, host: binding.host });
