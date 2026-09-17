@@ -35,6 +35,8 @@ WebAuthn spike
 
 The WebAuthn assertion cryptographically binds to the exact HAA challenge digest. The browser-rendered action text is not promoted to a native trusted display: compromise of the web origin/DOM can misrepresent the human-visible claims even though it cannot change the HAA action that the assertion is bound to.
 
+WebAuthn `UV=required` proves that the authenticator reports user verification. HAA does not cryptographically learn which local verification modality was used. A physical operator may confirm Touch ID was used when the platform offers it, but the server must not turn that observation into a protocol-level Touch ID claim.
+
 No biometric template, Touch ID data or biometric result is stored by HAA.
 
 ## Policy
@@ -185,10 +187,12 @@ The optional local browser UI is served at:
 It separates the ceremony into three explicit operations:
 
 ```text
-1. register Touch ID credential
+1. register a platform WebAuthn credential
 2. prepare and display exact HAA claims
-3. explicitly approve with WebAuthn
+3. explicitly approve with WebAuthn user verification
 ```
+
+On the physical Mac gate, use Touch ID when the browser/platform offers it. The HAA evidence records `user-verified`; it does not claim that Touch ID was necessarily the verification modality.
 
 The page visibly warns that the action rendering is browser-origin protected and not equivalent to the native macOS trusted display. It does not claim device-bound assurance.
 
@@ -201,11 +205,17 @@ Automated tests cover the full synthetic cryptographic path with a real generate
 ```text
 wrong origin
 wrong WebAuthn challenge
+wrong RP ID hash
+wrong credential ID
 UV=false
 registration origin mismatch
 registration UV=false
+revoked authenticator
+assertion replay
 counter regression
 request lifecycle / HAA challenge consumption
+strict WebAuthn HTTP envelopes and bounded credential fields
+browser UI no-store / frame-denied policy
 ```
 
 Existing HAA tests continue to cover:
@@ -215,12 +225,11 @@ mutated ActionSpec
 stale approval precondition
 wrong executor audience
 replayed approval evidence
-revoked authenticator
-request expiry
+request/challenge expiry
 role separation
 ```
 
-The adapter adds no external npm dependency: CBOR parsing is deliberately bounded to the definite-length structures required by this spike and only accepts `none` attestation plus P-256/ES256 credentials.
+The adapter adds no external npm dependency: CBOR parsing is deliberately bounded to the definite-length structures required by this spike and only accepts `none` attestation plus P-256/ES256 credentials. If WebAuthn is promoted beyond an optional spike, replacing or independently reviewing this parser against a mature WebAuthn implementation is an explicit T04.10 decision input rather than an implicit assurance upgrade.
 
 ## T04.9 — Physical browser gate
 
@@ -232,16 +241,16 @@ Run on the physical Mac:
 npm run validate:webauthn-macos 2>&1 | tee w7-t04-webauthn-physical.txt
 ```
 
-The validator:
+The validator records the local HAA Git SHA and then:
 
 ```text
 starts isolated HAA on localhost
   -> creates PENDING request
   -> proves executor blocked before approval
   -> opens local browser UI
-  -> user registers platform credential with Touch ID
+  -> user registers platform credential (use Touch ID when offered)
   -> user reviews exact claims
-  -> user approves with WebAuthn / Touch ID
+  -> user approves with WebAuthn user verification (use Touch ID when offered)
   -> HAA accepts user-verified evidence
   -> executor obtains exact ExecutionGrant
   -> request becomes CONSUMED exactly once
@@ -252,6 +261,8 @@ Expected terminal line:
 ```text
 PASS W7-T04.9: browser WebAuthn → Touch ID → user-verified HAA evidence → exact grant
 ```
+
+The literal PASS label names the intended physical test path. The cryptographic evidence itself proves `UV=required`, not the specific local biometric modality. The operator should report whether Touch ID was actually used when returning the physical log.
 
 ## T04.10 — Spike decision
 
@@ -273,6 +284,7 @@ The decision must weigh observed physical-browser behavior against these dimensi
 - operational RP/origin/TLS requirements;
 - dependency/TCB impact;
 - maintenance cost;
-- whether the lower trusted-display assurance is acceptable for intended actions.
+- whether the lower trusted-display assurance is acceptable for intended actions;
+- whether a production adoption should replace/review the dependency-free bounded CBOR parser with a mature WebAuthn implementation.
 
 No adoption decision is recorded before the physical gate. Until then WebAuthn remains optional and disabled by default.
