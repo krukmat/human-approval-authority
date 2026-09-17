@@ -65,9 +65,16 @@ async function waitForApproval(requestId) {
   throw new Error('Timed out waiting for browser WebAuthn approval');
 }
 
+function gitHead() {
+  const result = spawnSync('git', ['-C', repoRoot, 'rev-parse', 'HEAD'], { encoding: 'utf8' });
+  if (result.status !== 0) return 'UNKNOWN';
+  return result.stdout.trim();
+}
+
 try {
   console.log('W7-T04.9 — browser WebAuthn → Touch ID → HAA approval → execution grant');
   console.log(`HAA: ${repoRoot}`);
+  console.log(`HAA SHA: ${gitHead()}`);
 
   server = spawn(process.execPath, ['--experimental-strip-types', 'apps/haa-server/src/server.ts'], {
     cwd: repoRoot,
@@ -83,7 +90,7 @@ try {
       HAA_WEBAUTHN_ORIGIN: baseUrl,
       HAA_WEBAUTHN_RP_NAME: 'HAA WebAuthn Physical Gate',
       PORT: String(port),
-      HOST: '127.0.0.1',
+      HOST: 'localhost',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -124,7 +131,8 @@ try {
   console.log('  3. Approve with WebAuthn / Touch ID');
   console.log('\nAssurance reminder: the action display is web-origin protected, not a native trusted display.');
   console.log(`Expected RESOURCE: ${action.payload.resource}`);
-  console.log(`Expected OPERATION: ${action.payload.operation}\n`);
+  console.log(`Expected OPERATION: ${action.payload.operation}`);
+  console.log(`Expected EXPECTED VERSION: ${action.preconditions.version}\n`);
 
   const opened = spawnSync('open', [url], { encoding: 'utf8' });
   if (opened.status !== 0) {
