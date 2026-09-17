@@ -238,25 +238,25 @@ test('WebAuthn counter regression is rejected when authenticator exposes a count
 
 test('WebAuthn revoked authenticator and assertion replay cannot approve', () => {
   const f = fixture();
-  const revokedId = enroll(f);
-  const revokedFlow = approval(f, revokedId, 'req-wa-revoked');
-  f.app.revokeAuthenticator('human-secret', revokedId);
-  assert.throws(() => f.app.submitEvidence({
-    apiKey: 'human-secret',
-    evidence: assertionEvidence({
-      f, authenticatorId: revokedId, requestId: 'req-wa-revoked', digest: revokedFlow.digest,
-      webAuthnChallenge: revokedFlow.options.publicKey.challenge, counter: 1,
-    }),
-  }), /AUTHENTICATOR_REVOKED/);
-  assert.equal(f.app.getRequest('agent-secret', 'req-wa-revoked').state, 'PENDING');
+  const authenticatorId = enroll(f);
 
-  const activeId = enroll(f);
-  const replayFlow = approval(f, activeId, 'req-wa-replay');
+  const replayFlow = approval(f, authenticatorId, 'req-wa-replay');
   const replayEvidence = assertionEvidence({
-    f, authenticatorId: activeId, requestId: 'req-wa-replay', digest: replayFlow.digest,
+    f, authenticatorId, requestId: 'req-wa-replay', digest: replayFlow.digest,
     webAuthnChallenge: replayFlow.options.publicKey.challenge, counter: 0,
   });
   f.app.submitEvidence({ apiKey: 'human-secret', evidence: replayEvidence });
   assert.throws(() => f.app.submitEvidence({ apiKey: 'human-secret', evidence: replayEvidence }), /REQUEST_NOT_PENDING:APPROVED/);
+
+  const revokedFlow = approval(f, authenticatorId, 'req-wa-revoked');
+  f.app.revokeAuthenticator('human-secret', authenticatorId);
+  assert.throws(() => f.app.submitEvidence({
+    apiKey: 'human-secret',
+    evidence: assertionEvidence({
+      f, authenticatorId, requestId: 'req-wa-revoked', digest: revokedFlow.digest,
+      webAuthnChallenge: revokedFlow.options.publicKey.challenge, counter: 1,
+    }),
+  }), /AUTHENTICATOR_REVOKED/);
+  assert.equal(f.app.getRequest('agent-secret', 'req-wa-revoked').state, 'PENDING');
   f.store.close();
 });
