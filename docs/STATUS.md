@@ -10,18 +10,47 @@ W3 Apple authenticator                     DONE + physical validation
 W4 Agent integration                       DONE + physical bounded-executor validation
 W5 Hardware POC                            DEFERRED
 W6 Hardware hardening                      BLOCKED by W5
-W7 Software production hardening           DONE
+W7 Software production hardening           DONE baseline / optional T04 spike ACTIVE
 W8 Universal ceremony outcomes             DONE + physical macOS gate
 W9 Reference integration / adoption        DONE / PASS_WITH_FOLLOWUPS
 ```
 
 ### W7
 
+The accepted software production baseline remains closed and is not reopened by the optional WebAuthn spike.
+
 - independent/cross-model review: `PASS_WITH_FOLLOWUPS`;
 - remaining BLOCKING findings: `0`;
 - remaining P1 findings: `0`;
 - production-readiness gate: DONE;
-- accepted W7 code SHA: `7720ac04e5b35637dcc56952925af15386cdc226`.
+- accepted W7 production baseline SHA: `7720ac04e5b35637dcc56952925af15386cdc226`.
+
+Optional WebAuthn spike status:
+
+```text
+W7-T04    Optional WebAuthn adapter spike      IN_PROGRESS
+W7-T04.1  Assurance contract                   DONE
+W7-T04.2  Authenticator model                  DONE
+W7-T04.3  Registration ceremony                DONE
+W7-T04.4  HAA challenge binding                DONE
+W7-T04.5  Assertion verifier                   DONE
+W7-T04.6  Evidence adapter                     DONE
+W7-T04.7  Browser approval UI                  DONE
+W7-T04.8  Negative-path automated tests        DONE
+W7-T04.9  Physical browser / Touch ID gate     READY
+W7-T04.10 Adoption decision                    BLOCKED by T04.9
+```
+
+The WebAuthn adapter is disabled by default and preserves protocol v1. Its current assurance is intentionally lower than the native macOS approver:
+
+```text
+WebAuthn evidence       user-verified
+human-visible display  authenticated web origin / DOM
+platform attestation   not claimed
+native trusted display not claimed
+```
+
+See `docs/W7-T04-WEBAUTHN-SPIKE.md`.
 
 ### W8
 
@@ -89,12 +118,26 @@ The closed HAA software baseline and adoption gates have validated:
 - external Python detached grant verification;
 - external bounded Git side effect only after HAA authorization.
 
+The optional WebAuthn spike has additionally validated in automated tests:
+
+- principal-bound single-use WebAuthn registration;
+- exact RP/origin binding;
+- `UP` and `UV` enforcement;
+- exact HAA challenge-digest binding;
+- P-256/ES256 assertion verification;
+- wrong-origin, wrong-challenge, wrong-RP and wrong-credential denial;
+- authenticator revocation and assertion replay denial;
+- signature-counter regression denial when counters are exposed;
+- `VerifiedEvidence` mapping to `user-verified` without protocol-v1 changes.
+
+Physical browser/Touch ID evidence remains pending W7-T04.9.
+
 ## Authority model
 
 Only verified positive approval may lead to execution authority:
 
 ```text
-trusted display
+human-visible action
   -> positive human verification
   -> ApprovalEvidence
   -> ApprovalReceipt
@@ -103,6 +146,8 @@ trusted display
   -> executor verification
   -> side effect
 ```
+
+For the native macOS approver, the action is rendered in the native trusted display. For the WebAuthn spike, the display is web-origin/DOM protected and must not be represented as equivalent assurance.
 
 `ApprovalReceipt` and request state `APPROVED` are never execution bearer capabilities.
 
@@ -128,10 +173,11 @@ Only `USER_ESCAPE` claims explicit negative human action; all other rejection re
 - the Python reference executor does not yet automate post-merge same-execution reconciliation; it fails closed and this remains a P2 integration follow-up;
 - no official Python HAA SDK exists; the reference integration uses the public HTTP/protocol contract and a local detached verifier;
 - hardware authenticator work remains deferred;
-- WebAuthn remains optional/deferred.
+- WebAuthn remains an optional spike and is disabled by default until T04.9 physical evidence and T04.10 adoption decision are complete.
 
 ## Evidence references
 
+- `docs/W7-T04-WEBAUTHN-SPIKE.md`
 - `docs/W7-T05-REVIEW-2026-09-13.md`
 - `docs/W7-PRODUCTION-READINESS.md`
 - `docs/W8-CEREMONY-OUTCOMES.md`
