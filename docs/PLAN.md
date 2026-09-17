@@ -10,17 +10,17 @@ W3 Apple Authenticator                       DONE + physical validation
 W4 Agent Integration & Value Gate            DONE + physical validation
 W5 Hardware Authenticator POC                DEFERRED
 W6 Hardware Hardening                        BLOCKED by W5
-W7 Software Production Hardening             DONE baseline
-  └─ W7-T04 Optional WebAuthn spike          IN_PROGRESS
+W7 Software Production Hardening             DONE
+  └─ W7-T04 Optional WebAuthn spike          DONE / KEEP_OPTIONAL
 W8 Universal Ceremony Outcomes               DONE + physical validation
 W9 Reference Integration / Adoption Gate     DONE / PASS_WITH_FOLLOWUPS
 ```
 
-The accepted W7/W8/W9 software baselines remain closed. Reactivating the optional W7-T04 adapter does not reopen protocol v1 or the production/adoption gates.
+The accepted W7/W8/W9 software baselines remain closed. The optional W7-T04 adapter was completed without reopening protocol v1 or the production/adoption gates.
 
 ## W7-T04 — optional WebAuthn adapter spike
 
-Approved task sequence:
+Final task sequence:
 
 ```text
 T04.1  Assurance contract                   DONE
@@ -31,13 +31,17 @@ T04.5  WebAuthn assertion verifier          DONE
 T04.6  WebAuthn evidence adapter            DONE
 T04.7  Browser approval UI                  DONE
 T04.8  Negative-path automated tests        DONE
-T04.9  Physical browser gate                READY
-T04.10 Spike adoption decision              BLOCKED by T04.9
+T04.9  Physical browser gate                DONE / PASS
+T04.10 Spike adoption decision              DONE / KEEP_OPTIONAL
 ```
 
-The WebAuthn spike is disabled by default and preserves the frozen protocol-v1 types. It reports `user-verified` assurance and does not claim the native trusted display, device binding or platform attestation of the macOS Secure Enclave path.
+The WebAuthn adapter is disabled by default and preserves the frozen protocol-v1 types. It reports `user-verified` assurance and does not claim the native trusted display, device binding or platform attestation of the macOS Secure Enclave path.
 
-The physical gate and decision record are defined in `docs/W7-T04-WEBAUTHN-SPIKE.md`.
+Physical validation completed on HAA SHA `52d7c8430a0d2508067f44711bc3656ee12e5887`, proving a real browser/platform WebAuthn approval through exact `ExecutionGrant` issuance and one-shot consumption.
+
+Decision: `KEEP_OPTIONAL`. Native macOS remains the preferred higher-assurance path for high-risk actions; WebAuthn is retained for cases where browser portability and reach are worth the weaker presentation trust boundary.
+
+The physical gate and decision record are in `docs/W7-T04-WEBAUTHN-SPIKE.md`.
 
 ## Stable primitives
 
@@ -69,9 +73,9 @@ No private HAA import was required. DubBridge is not an active HAA dependency or
 
 ## Remaining optional product directions
 
-After W7-T04 is decided, the only previously planned optional/deferred directions are:
+The intentionally deferred/follow-up directions are now:
 
-- WebAuthn adoption beyond the spike, only if T04.10 chooses `ADOPT`;
+- WebAuthn production promotion beyond `KEEP_OPTIONAL`, only if future use cases justify the weaker browser-display assurance and the parser/production-origin review is completed;
 - W5 hardware POC, if dedicated hardware value is reprioritized;
 - W6 hardware hardening, only after W5 proves value;
 - W9 P2 developer-experience follow-ups such as an official Python SDK and improved external-executor recovery ergonomics.
