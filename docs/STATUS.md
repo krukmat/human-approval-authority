@@ -78,7 +78,7 @@ W9-T01 Release baseline freeze                 DONE
 W9-T02 Minimal external integration contract   DONE
 W9-T03 Reference external consumer             DONE
 W9-T04 Real ActionProfile                      DONE
-W9-T05 External executor integration           DONE_WITH_FOLLOWUP
+W9-T05 External executor integration           DONE
 W9-T06 External integration E2E                DONE + physical macOS/Touch ID
 W9-T07 Adoption-gap review                     DONE
 W9-T08 Integration-readiness gate              DONE / PASS_WITH_FOLLOWUPS
@@ -92,7 +92,7 @@ Physical W9 external-consumer VEL baseline: `faa3561a0796c088ad4d7a8b6f9eeb79b22
 
 The external physical gate proved a real cross-repository requester → HAA → Touch ID → detached-verifying external executor → bounded Git fast-forward side effect, ending in one `CONSUMED` event.
 
-W9 remaining findings are P2/P3 adoption/DX follow-ups only; open BLOCKING findings: `0`; open P1 findings: `0`.
+W9 executor-recovery follow-up is closed in `krukmat/verifiable-event-ledger` at `0e942480b2b8a9b5a0fb2f17c9ea5de4161a28a5` with CI green. Remaining W9 software follow-up is the optional P2 Python SDK/DX item; open BLOCKING findings: `0`; open P1 findings: `0`.
 
 Canonical task/dependency source: `tasks/manifest.yaml`.
 
@@ -181,7 +181,7 @@ Only `USER_ESCAPE` claims explicit negative human action; all other rejection re
 - TLS/rate limiting and network-edge protections are operator-managed deployment responsibilities.
 - `audit_events` are checkpoint-protected; administrative credential lifecycle audit remains a separate operational stream.
 - SQLite remains single-node/single-writer for the current supported deployment model.
-- the Python reference executor does not yet automate post-merge same-execution reconciliation; it fails closed and this remains a P2 integration follow-up;
+- the Python reference executor now automates bounded same-`executionId` post-merge reconciliation: an already-applied approved source is accepted only after HAA returns and the executor detached-verifies the original grant; a different execution ID remains denied;
 - no official Python HAA SDK exists; the reference integration uses the public HTTP/protocol contract and a local detached verifier;
 - hardware authenticator work remains deferred;
 - WebAuthn remains optional and disabled by default; it provides `user-verified` assurance with a browser-origin display rather than the native trusted-display/device-bound assurance path;
