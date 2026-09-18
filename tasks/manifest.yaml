@@ -84,7 +84,7 @@ tasks:
   - {id: W9-T02, wave: W9, title: "Minimal external integration contract", depends_on: [W9-T01], status: DONE}
   - {id: W9-T03, wave: W9, title: "Reference external consumer", depends_on: [W9-T02], status: DONE}
   - {id: W9-T04, wave: W9, title: "Real ActionProfile", depends_on: [W9-T03], status: DONE}
-  - {id: W9-T05, wave: W9, title: "External executor integration", depends_on: [W9-T03, W9-T04], status: DONE_WITH_FOLLOWUP}
+  - {id: W9-T05, wave: W9, title: "External executor integration", depends_on: [W9-T03, W9-T04], status: DONE}
   - {id: W9-T06, wave: W9, title: "External integration end-to-end gate", depends_on: [W9-T05], status: DONE}
   - {id: W9-T07, wave: W9, title: "Adoption-gap review", depends_on: [W9-T06], status: DONE}
   - {id: W9-T08, wave: W9, title: "Integration-readiness gate", depends_on: [W9-T07], status: DONE}
