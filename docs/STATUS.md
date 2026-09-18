@@ -15,6 +15,19 @@ W8 Universal ceremony outcomes             DONE + physical macOS gate
 W9 Reference integration / adoption        DONE / PASS_WITH_FOLLOWUPS
 ```
 
+## Canonical current software posture
+
+`tasks/manifest.yaml` is canonical for W0-W9 task/dependency status. This document is canonical for current software follow-up priority and parked/optional directions.
+
+```text
+S1 External executor recovery      DONE
+S2 Official Python SDK             PARKED / NOT PRIORITIZED
+S3 Documentation canonicalization  DONE
+active non-hardware software       NONE
+```
+
+S3 was documentation-only. It synchronized roadmap, plan, status, W9 review, README, manifest ownership wording and changelog without changing HAA protocol, architecture or runtime behavior.
+
 ### W7
 
 The accepted software production baseline remains closed. The optional WebAuthn spike has now also completed without reopening protocol v1 or the accepted production baseline.
@@ -92,7 +105,7 @@ Physical W9 external-consumer VEL baseline: `faa3561a0796c088ad4d7a8b6f9eeb79b22
 
 The external physical gate proved a real cross-repository requester → HAA → Touch ID → detached-verifying external executor → bounded Git fast-forward side effect, ending in one `CONSUMED` event.
 
-W9 executor-recovery follow-up is closed in `krukmat/verifiable-event-ledger` at `0e942480b2b8a9b5a0fb2f17c9ea5de4161a28a5` with CI green. Remaining W9 software follow-up is the optional P2 Python SDK/DX item; open BLOCKING findings: `0`; open P1 findings: `0`.
+W9 executor-recovery follow-up is closed in `krukmat/verifiable-event-ledger` at `0e942480b2b8a9b5a0fb2f17c9ea5de4161a28a5` with CI green. The former P2 Python SDK/DX idea is now PARKED / NOT PRIORITIZED, so there is no active W9 software follow-up. Open BLOCKING findings: `0`; open P1 findings: `0`.
 
 Canonical task/dependency source: `tasks/manifest.yaml`.
 
@@ -182,9 +195,9 @@ Only `USER_ESCAPE` claims explicit negative human action; all other rejection re
 - `audit_events` are checkpoint-protected; administrative credential lifecycle audit remains a separate operational stream.
 - SQLite remains single-node/single-writer for the current supported deployment model.
 - the Python reference executor now automates bounded same-`executionId` post-merge reconciliation: an already-applied approved source is accepted only after HAA returns and the executor detached-verifies the original grant; a different execution ID remains denied;
-- no official Python HAA SDK exists; the reference integration uses the public HTTP/protocol contract and a local detached verifier;
+- no official Python HAA SDK exists; S2 is PARKED / NOT PRIORITIZED because the current reference integration is already functional through the public HTTP/protocol contract;
 - hardware authenticator work remains deferred;
-- WebAuthn remains optional and disabled by default; it provides `user-verified` assurance with a browser-origin display rather than the native trusted-display/device-bound assurance path;
+- WebAuthn is DONE / `KEEP_OPTIONAL` and disabled by default; it provides `user-verified` assurance with a browser-origin display rather than the native trusted-display/device-bound assurance path;
 - before broader WebAuthn production promotion, the bounded dependency-free CBOR/WebAuthn parser should be replaced or independently reviewed against a mature implementation and production RP/origin/TLS operations should be validated.
 
 ## Evidence references
