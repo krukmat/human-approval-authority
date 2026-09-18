@@ -18,6 +18,23 @@ W9 Reference Integration / Adoption Gate     DONE / PASS_WITH_FOLLOWUPS
 
 The accepted W7/W8/W9 software baselines remain closed. The optional W7-T04 adapter was completed without reopening protocol v1 or the production/adoption gates.
 
+## Canonical status ownership
+
+- `tasks/manifest.yaml` is the canonical task/dependency source for product waves W0-W9.
+- `docs/STATUS.md` is the canonical current-state summary for software follow-ups and parked/optional directions.
+- Historical decision/review documents retain their original gate result while their current follow-up posture is updated explicitly.
+
+## Current software follow-up posture
+
+```text
+S1 External executor recovery      DONE
+S2 Official Python SDK             PARKED / NOT PRIORITIZED
+S3 Documentation canonicalization  DONE
+active non-hardware software       NONE
+```
+
+S1 closed the same-`executionId` post-merge recovery gap in `krukmat/verifiable-event-ledger`. S2 is intentionally parked because no current consumer requires a standalone Python SDK. S3 is documentation-only and does not change protocol, architecture, tests or runtime behavior.
+
 ## W7-T04 — optional WebAuthn adapter spike
 
 Final task sequence:
@@ -71,14 +88,14 @@ external requester
 
 No private HAA import was required. DubBridge is not an active HAA dependency or prerequisite.
 
-## Remaining optional product directions
+## Remaining optional / deferred directions
 
-The intentionally deferred/follow-up directions are now:
+No active non-hardware software task remains.
 
-- WebAuthn production promotion beyond `KEEP_OPTIONAL`, only if future use cases justify the weaker browser-display assurance and the parser/production-origin review is completed;
+- WebAuthn production promotion beyond `KEEP_OPTIONAL`, only if a future use case justifies the browser-display assurance and production-origin/parser review;
+- S2 official Python SDK, parked/not prioritized until a concrete consumer needs it;
 - W5 hardware POC, if dedicated hardware value is reprioritized;
-- W6 hardware hardening, only after W5 proves value;
-- W9 P2 developer-experience follow-up: an optional official Python SDK. The external-executor same-`executionId` recovery follow-up is closed in `krukmat/verifiable-event-ledger`.
+- W6 hardware hardening, only after W5 proves value.
 
 ## Hardware justification
 
