@@ -1,5 +1,29 @@
 # Changelog
 
+## S3 documentation canonicalization — 2026-09-18
+
+Documentation-only closure; no protocol, architecture, runtime or test behavior changed.
+
+Delivered:
+
+- clarified canonical status ownership: `tasks/manifest.yaml` for W0-W9 task/dependency state and `docs/STATUS.md` for current software follow-up posture;
+- synchronized `docs/HAA-ACTIVE-ROADMAP.md`, `docs/PLAN.md`, `docs/STATUS.md`, `docs/W9-ADOPTION-REVIEW.md`, README and manifest ownership wording;
+- recorded S1 external-executor recovery as DONE;
+- recorded S2 official Python SDK as PARKED / NOT PRIORITIZED;
+- recorded S3 as DONE;
+- removed stale claims that WebAuthn is still deferred or that product integrations are still parked;
+- preserved the historical W9 `PASS_WITH_FOLLOWUPS` gate result while separating it from current follow-up status.
+
+Current non-hardware software posture:
+
+```text
+active software tasks            NONE
+S1 executor recovery             DONE
+S2 official Python SDK           PARKED / NOT PRIORITIZED
+S3 documentation canonicalization DONE
+WebAuthn production promotion    OPTIONAL / NOT ACTIVE
+```
+
 ## Post-baseline optional WebAuthn adapter — 2026-09-17
 
 This work does **not** redefine the frozen HAA integration baseline or protocol-v1 package versions.
