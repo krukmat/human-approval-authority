@@ -2,6 +2,16 @@
 
 Status: **PASS_WITH_FOLLOWUPS / W9 CLOSED**
 
+Current follow-up posture (post-S1/S3):
+
+```text
+external executor recovery   CLOSED
+official Python SDK           PARKED / NOT PRIORITIZED
+active W9 software follow-up  NONE
+```
+
+The historical gate result remains `PASS_WITH_FOLLOWUPS`; the follow-up statuses above describe the current state and do not rewrite the original gate decision.
+
 Date: 2026-09-17
 
 Reference consumer: `krukmat/verifiable-event-ledger`
@@ -167,7 +177,7 @@ This combination is accepted as the W9 integration gate: physical validation is 
 
 | Finding | Classification | Severity | Decision |
 | --- | --- | --- | --- |
-| No official Python HAA SDK; Python consumer implements detached verifier from the public protocol | `INTEGRATION_FIX` | P2 | Optional future SDK/DX work; not required for correctness |
+| No official Python HAA SDK; Python consumer implements detached verifier from the public protocol | `INTEGRATION_FIX` | P2 | **PARKED / NOT PRIORITIZED** — current consumer is functional; revisit only for concrete adoption demand |
 | Post-merge same-execution recovery in the reference executor | `INTEGRATION_FIX` | P2 | **CLOSED** — automated same-ID reconciliation, detached grant verification and real-Git at-most-once test |
 | Xcode Personal Team must be selected locally for Secure Enclave physical validation | `DOCS` | P3 | Expected platform provisioning boundary |
 | Physical validator did not emit local HAA Git SHA | `DOCS` | P3 | Improve future evidence output; does not invalidate observed ceremony |
@@ -202,6 +212,6 @@ P1 adoption findings                            0
 HAA remains consumer-agnostic                   PASS
 ```
 
-W9 is closed. The executor-recovery P2 is now closed. The remaining P2 integration follow-up is the optional official Python SDK/DX improvement; it does not reopen HAA core or the closed W7/W8 security baselines.
+W9 is closed. The executor-recovery P2 is closed. The Python SDK/DX idea is PARKED / NOT PRIORITIZED, leaving no active W9 software follow-up. None of these follow-up decisions reopen HAA core or the closed W7/W8 security baselines.
 
 Hardware W5/W6 remains deferred/blocked as previously decided. WebAuthn W7-T04 is complete with decision `KEEP_OPTIONAL`.
