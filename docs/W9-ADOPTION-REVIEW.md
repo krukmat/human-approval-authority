@@ -80,7 +80,7 @@ See `docs/W9-GIT-MERGE-PROFILE-REVIEW.md`.
 
 ## W9-T05 — External executor
 
-Result: **PASS_WITH_FOLLOWUP**
+Result: **PASS — S1 RECOVERY FOLLOW-UP CLOSED**
 
 The external Python executor validates:
 
@@ -114,9 +114,22 @@ HEAD == anything else
   -> fail closed; obtain a new approval for the new state
 ```
 
-The current reference CLI does not automate the first reconciliation branch after a completed merge; a direct rerun can stop at its local stale-target check. This is fail-closed and cannot duplicate the merge, but it is developer/operational friction rather than ideal retry ergonomics.
+The S1 follow-up is now implemented in `krukmat/verifiable-event-ledger`.
 
-Classification: `INTEGRATION_FIX`, severity P2/non-blocking.
+The executor classifies local state as `READY`, `ALREADY_APPLIED_CANDIDATE`, or stale. When HEAD is already the approved source commit, it calls HAA again with the **same durable executionId**, requires HAA to return the already-issued grant, detached-verifies the original request/execution/action/audience binding, re-checks branch/target/worktree, and returns `ALREADY_APPLIED` without invoking Git merge again.
+
+A retry with a different execution ID after consumption remains denied by HAA. The executor also recomputes the canonical HAA action digest locally before authorization so a changed repository/source/target/target-before fails closed.
+
+A real temporary-Git automated test proves first execution `MERGED` followed by same-ID `ALREADY_APPLIED` with exactly one `git merge --ff-only` invocation.
+
+Closure evidence:
+
+```text
+VEL commit  0e942480b2b8a9b5a0fb2f17c9ea5de4161a28a5
+CI          PASS
+```
+
+Classification: `INTEGRATION_FIX`, severity P2 — **CLOSED**.
 
 ## W9-T06 — External integration E2E
 
@@ -155,7 +168,7 @@ This combination is accepted as the W9 integration gate: physical validation is 
 | Finding | Classification | Severity | Decision |
 | --- | --- | --- | --- |
 | No official Python HAA SDK; Python consumer implements detached verifier from the public protocol | `INTEGRATION_FIX` | P2 | Optional future SDK/DX work; not required for correctness |
-| Post-merge same-execution recovery is manual reconciliation in the reference executor | `INTEGRATION_FIX` | P2 | Fail-closed; automate only if this consumer becomes operational |
+| Post-merge same-execution recovery in the reference executor | `INTEGRATION_FIX` | P2 | **CLOSED** — automated same-ID reconciliation, detached grant verification and real-Git at-most-once test |
 | Xcode Personal Team must be selected locally for Secure Enclave physical validation | `DOCS` | P3 | Expected platform provisioning boundary |
 | Physical validator did not emit local HAA Git SHA | `DOCS` | P3 | Improve future evidence output; does not invalidate observed ceremony |
 | `git.merge.v1` uses generic non-empty strings rather than enforcing portable Git ref/SHA grammar in HAA core | `NO_ACTION` | — | External executor resolves/pins Git identifiers; no cross-consumer evidence for core expansion |
@@ -189,6 +202,6 @@ P1 adoption findings                            0
 HAA remains consumer-agnostic                   PASS
 ```
 
-W9 is closed. The two P2 integration follow-ups are optional adoption/DX improvements and do not reopen HAA core or the closed W7/W8 security baselines.
+W9 is closed. The executor-recovery P2 is now closed. The remaining P2 integration follow-up is the optional official Python SDK/DX improvement; it does not reopen HAA core or the closed W7/W8 security baselines.
 
-Hardware W5/W6 remains deferred/blocked as previously decided. WebAuthn W7-T04 remains optional/deferred.
+Hardware W5/W6 remains deferred/blocked as previously decided. WebAuthn W7-T04 is complete with decision `KEEP_OPTIONAL`.
