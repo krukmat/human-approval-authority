@@ -1,5 +1,7 @@
 schema_version: 1
 project: human-approval-authority
+# Canonical implementation task/dependency source for product waves W0-W9.
+# Current software-follow-up posture (S1/S2/S3, optional/deferred directions) is summarized in docs/STATUS.md.
 tasks:
   - {id: W0-T01, wave: W0, title: "Monorepo and package-boundary scaffold", depends_on: [], status: DONE}
   - {id: W0-T02, wave: W0, title: "Protocol/domain schema freeze", depends_on: [W0-T01], status: DONE}
