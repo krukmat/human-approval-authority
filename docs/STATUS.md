@@ -28,6 +28,20 @@ active non-hardware software       NONE
 
 S3 was documentation-only. It synchronized roadmap, plan, status, W9 review, README, manifest ownership wording and changelog without changing HAA protocol, architecture or runtime behavior.
 
+
+S3 closure detail:
+
+```text
+S3-T01 Canonical status source       DONE
+S3-T02 Roadmap sync                  DONE
+S3-T03 PLAN cleanup                  DONE
+S3-T04 STATUS cleanup                DONE
+S3-T05 W9 adoption review sync       DONE
+S3-T06 README current-state summary  DONE
+S3-T07 Cross-doc consistency check   DONE
+S3-T08 Closure                       DONE
+```
+
 ### W7
 
 The accepted software production baseline remains closed. The optional WebAuthn spike has now also completed without reopening protocol v1 or the accepted production baseline.
