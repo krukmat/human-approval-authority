@@ -78,7 +78,7 @@ The intentionally deferred/follow-up directions are now:
 - WebAuthn production promotion beyond `KEEP_OPTIONAL`, only if future use cases justify the weaker browser-display assurance and the parser/production-origin review is completed;
 - W5 hardware POC, if dedicated hardware value is reprioritized;
 - W6 hardware hardening, only after W5 proves value;
-- W9 P2 developer-experience follow-ups such as an official Python SDK and improved external-executor recovery ergonomics.
+- W9 P2 developer-experience follow-up: an optional official Python SDK. The external-executor same-`executionId` recovery follow-up is closed in `krukmat/verifiable-event-ledger`.
 
 ## Hardware justification
 
