@@ -1,39 +1,61 @@
 # HAA active roadmap
 
-Status: **CLOSED / HAA-ONLY BASELINE ACCEPTED**
+Status: **SOFTWARE BASELINE CLOSED / NO ACTIVE SOFTWARE TASKS**
 
-This roadmap records the completed HAA-only software and ceremony baseline for `human-approval-authority`. Product integrations and dedicated hardware remain deliberately parked.
+This document is the narrative roadmap. Canonical product-wave task/dependency status lives in `tasks/manifest.yaml`; the current software/backlog posture lives in `docs/STATUS.md`.
+
+## Current state
+
+```text
+W0-W4   foundation/core/service/Apple/agent path     DONE
+W5      hardware POC                                 DEFERRED
+W6      hardware hardening                           BLOCKED by W5
+W7      software production hardening                DONE
+  T04   WebAuthn adapter                              DONE / KEEP_OPTIONAL
+W8      universal ceremony outcomes                  DONE + physical validation
+W9      reference external adoption                  DONE / PASS_WITH_FOLLOWUPS
+
+S1      external executor recovery                    DONE
+S2      official Python SDK                           PARKED / NOT PRIORITIZED
+S3      documentation canonicalization                DONE
+```
+
+There is **no active non-hardware software task** after S3. New software work should be opened only from a concrete adoption, operational, assurance or scalability need rather than by extending the core speculatively.
 
 ## Scope boundary
 
-The completed HAA-only baseline covers:
+The accepted software baseline covers:
 
 - protocol compatibility and lifecycle semantics;
 - service/API hardening;
 - requester/client credential lifecycle;
 - authority key lifecycle;
-- authenticator assurance and macOS approver behavior;
+- authenticator assurance and native macOS approver behavior;
+- optional WebAuthn approval with its explicitly lower browser-display assurance;
 - audit integrity;
 - self-host operational security;
 - SDK / executor verification;
 - APPROVE / REJECT ceremony semantics;
-- HAA-only automated and physical validation.
+- automated and physical validation;
+- one real external consumer/adoption path through `krukmat/verifiable-event-ledger`;
+- bounded same-`executionId` external-executor recovery.
 
-Out of the completed baseline:
+Current non-goals / parked directions:
 
-- DubBridge or any other product repository;
-- product-specific ActionProfiles;
-- provider/model routing;
-- hardware POC/hardening (W5/W6);
-- WebAuthn spike (W7-T04) unless reprioritized.
+- hardware POC/hardening (W5/W6), deferred by product priority;
+- official Python SDK (S2), parked because there is no current adoption need;
+- WebAuthn promotion beyond `KEEP_OPTIONAL`, unless a future use case justifies production promotion;
+- provider/model routing and product-specific logic inside HAA core.
 
-## Current baseline
+## Baseline facts
 
-W0-W4 are complete. W5/W6 remain deferred/blocked by product priority. W7 software production hardening is complete; W7-T04 remains optional/deferred. W8 universal ceremony outcomes and the physical macOS compatibility gate are complete.
+W7 software production hardening is complete. W7-T04 WebAuthn is also complete with decision `KEEP_OPTIONAL`; it is disabled by default and does not claim native trusted-display/device-bound assurance.
 
-W7-T05 closed with independent `PASS_WITH_FOLLOWUPS`, zero BLOCKING and zero P1 findings after remediation. W7-T15 is DONE. W8-T09 is DONE on physical validated SHA `1bec7bb76f0bb7119045bea6d59ed896364e2895`.
+W8 universal ceremony outcomes and the physical macOS compatibility gate are complete. W9 validated the public product boundary with an external repository and closed `PASS_WITH_FOLLOWUPS`; its external-executor recovery follow-up is now closed, while the optional Python SDK follow-up is parked/not prioritized.
 
-HAA protocol v1 is frozen. Future work must preserve the existing signed v1 schemas and compatibility contract. `ApprovalState` contains `REJECTED` and `EXPIRED`.
+W7-T05 closed with independent `PASS_WITH_FOLLOWUPS`, zero BLOCKING and zero P1 findings after remediation. W7-T15 is DONE. W8-T09 is DONE on physical validated SHA `1bec7bb76f0bb7119045bea6d59ed896364e2895`. WebAuthn physical validation ran on HAA SHA `52d7c8430a0d2508067f44711bc3656ee12e5887`.
+
+HAA protocol v1 remains frozen. Future work must preserve the existing signed v1 schemas and compatibility contract unless a deliberately scoped protocol-version change is opened.
 
 Therefore:
 
@@ -43,7 +65,7 @@ Therefore:
 - `USER_ESCAPE` is the only rejection reason that claims an explicit negative human action;
 - window close, timeout, challenge expiry and terminal interaction error are fail-closed rejection reasons and do not claim biometric or explicit-human rejection;
 - request TTL expiry remains lifecycle `EXPIRED`, distinct from challenge-level `CHALLENGE_EXPIRED` rejection;
-- only verified approval evidence may lead to `ApprovalReceipt` and `ExecutionGrant`.
+- only a detached-valid `ExecutionGrant` returned through `authorizeAndConsume(...)` grants execution authority.
 
 ---
 
@@ -449,6 +471,15 @@ W8-T01 ceremony ADR
 
 ## Baseline closure
 
-The HAA-only software/ceremony baseline is accepted and closed.
+The HAA software/ceremony/adoption baseline is accepted and closed.
 
-No active HAA core task remains in W7/W8. Hardware stays deferred, WebAuthn stays optional/deferred, and product integrations stay parked until deliberately reprioritized.
+```text
+active non-hardware software tasks   NONE
+S1 executor recovery                 DONE
+S2 official Python SDK               PARKED / NOT PRIORITIZED
+S3 documentation canonicalization    DONE
+WebAuthn production promotion        OPTIONAL / NOT ACTIVE
+W5/W6 hardware                       DEFERRED / BLOCKED
+```
+
+W9 already proves a real external product integration. Future product integrations should reuse the public HAA boundary rather than reopen core behavior without evidence from a concrete consumer.
