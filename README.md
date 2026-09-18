@@ -61,6 +61,10 @@ W7      software production hardening                DONE
   T04   optional WebAuthn adapter                     DONE / KEEP_OPTIONAL
 W8      universal ceremony + physical macOS gate     DONE
 W9      reference integration / adoption gate        DONE / PASS_WITH_FOLLOWUPS
+
+S1      external executor recovery                    DONE
+S2      official Python SDK                           PARKED / NOT PRIORITIZED
+S3      documentation canonicalization                DONE
 ```
 
 W7 closed with independent review `PASS_WITH_FOLLOWUPS`, zero remaining BLOCKING/P1 findings after remediation. The optional W7-T04 WebAuthn spike later completed its physical browser gate on HAA SHA `52d7c8430a0d2508067f44711bc3656ee12e5887` and was retained as `KEEP_OPTIONAL`.
@@ -79,7 +83,7 @@ external requester
   -> CONSUMED exactly once
 ```
 
-W9 finished `PASS_WITH_FOLLOWUPS`; remaining findings are non-blocking adoption/DX follow-ups. The frozen W9 starting code baseline is `e68b6ad8b8b3901f095e47111aa5545c132cf964`. See `docs/RELEASE-BASELINE.md`, `docs/W9-REFERENCE-INTEGRATION.md` and `docs/W9-ADOPTION-REVIEW.md`.
+W9 finished `PASS_WITH_FOLLOWUPS` as its historical gate result. The external-executor recovery follow-up is now closed; the optional Python SDK idea is parked/not prioritized. There are currently **no active non-hardware software tasks**. The frozen W9 starting code baseline is `e68b6ad8b8b3901f095e47111aa5545c132cf964`. See `docs/RELEASE-BASELINE.md`, `docs/W9-REFERENCE-INTEGRATION.md` and `docs/W9-ADOPTION-REVIEW.md`.
 
 ## Self-host
 
