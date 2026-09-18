@@ -44,18 +44,29 @@ let authorityPEM = try String(contentsOfFile: authorityKeyPath, encoding: .utf8)
 let verified = try verifyChallenge(package, authorityPublicKeyPEM: authorityPEM)
 guard verified.payload.authenticatorId == authenticatorId else { throw NSError(domain: "HAA", code: 20, userInfo: [NSLocalizedDescriptionKey: "Authenticator mismatch"]) }
 if isChallengeExpired(verified) { try emitReject(verified, reason: .challengeExpired) }
-let timeoutSeconds = arg("--timeout-seconds").flatMap(TimeInterval.init)
 
-switch await askForApproval(verified.payload, timeoutSeconds: timeoutSeconds) {
-case .approve:
-    do {
-        let signature = try authenticator.signApprovalDigest(verified.digest, prompt: "Approve HAA request \(verified.payload.requestId)")
-        let evidence = ApprovalEvidence(authenticatorId: authenticatorId, requestId: verified.payload.requestId, challengeDigest: verified.digest, signature: signature)
-        try printJSON(evidence)
-        exit(0)
-    } catch {
-        try emitReject(verified, reason: .interactionError)
-    }
-case .reject(let reason):
-    try emitReject(verified, reason: reason)
+// Single-popup ceremony experiment: skip the HAA NSAlert and let the native
+// macOS authentication dialog be the only interactive UI. The prompt is built
+// exclusively from the verified, authority-signed display claims.
+let promptLines = verified.payload.displayClaims.map { "\($0.label): \($0.value)" }
+let approvalPrompt = (["Human Approval Authority"] + promptLines).joined(separator: "\n")
+
+do {
+    let signature = try authenticator.signApprovalDigest(
+        verified.digest,
+        prompt: approvalPrompt
+    )
+    let evidence = ApprovalEvidence(
+        authenticatorId: authenticatorId,
+        requestId: verified.payload.requestId,
+        challengeDigest: verified.digest,
+        signature: signature
+    )
+    try printJSON(evidence)
+    exit(0)
+} catch {
+    // Protocol v1 has no USER_CANCEL reason. A user cancellation in the native
+    // macOS authentication dialog therefore remains fail-closed as
+    // INTERACTION_ERROR for this UX experiment.
+    try emitReject(verified, reason: .interactionError)
 }
