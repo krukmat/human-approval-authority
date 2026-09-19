@@ -11,3 +11,7 @@ dist/
 .haa/
 haa-github-sync-patch.zip
 haa-sync-patch/apply.sh
+macos/haa-approver-app/build/*
+macos/haa-approver-app/*
+macos/haa-approver-app/HAAApprover.xcodeproj/project.pbxproj
+w9-t06-external-physical.txt
