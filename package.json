@@ -34,7 +34,8 @@
     "backup:instance": "node --experimental-strip-types scripts/backup-instance.mjs",
     "verify:backup": "node --experimental-strip-types scripts/verify-backup.mjs",
     "restore:instance": "node --experimental-strip-types scripts/restore-instance.mjs",
-    "start": "node --experimental-strip-types apps/haa-server/src/server.ts"
+    "start": "node --experimental-strip-types apps/haa-server/src/server.ts",
+    "validate:dubbridge-macos": "node scripts/validate-dubbridge-macos-e2e.mjs"
   },
   "dependencies": {
     "fastify": "^5.6.0",
