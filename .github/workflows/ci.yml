@@ -35,6 +35,8 @@ jobs:
         run: node --check scripts/validate-dubbridge-macos-e2e.mjs
       - name: Run DubBridge ActionProfile contract tests
         run: node --experimental-strip-types --test tests/dubbridge-profiles.test.ts
+      - name: Build public protocol/SDK packages
+        run: npm run build:packages
       - name: Type-check HAA with DubBridge profiles
         run: npx tsc --noEmit
 
