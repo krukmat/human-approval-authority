@@ -177,7 +177,7 @@ try {
     ['-m', 'pip', 'install', '--disable-pip-version-check', '-r', join(dubbridgeRoot, 'scripts/haa/requirements.txt')],
     { stdio: 'inherit' },
   );
-  execFileSync(join(dubbridgeRoot, 'scripts/haa/run-tests.sh'), [], {
+  execFileSync('sh', [join(dubbridgeRoot, 'scripts/haa/run-tests.sh')], {
     cwd: dubbridgeRoot,
     env: { ...process.env, PATH: `${join(venv, 'bin')}:${process.env.PATH ?? ''}` },
     stdio: 'inherit',
