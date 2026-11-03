@@ -22,6 +22,22 @@ jobs:
       - run: npm test
       - run: npx tsc --noEmit
 
+  dubbridge-w2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Validate DubBridge physical orchestrator syntax
+        run: node --check scripts/validate-dubbridge-macos-e2e.mjs
+      - name: Run DubBridge ActionProfile contract tests
+        run: node --experimental-strip-types --test tests/dubbridge-profiles.test.ts
+      - name: Type-check HAA with DubBridge profiles
+        run: npx tsc --noEmit
+
   container-smoke:
     runs-on: ubuntu-latest
     steps:
