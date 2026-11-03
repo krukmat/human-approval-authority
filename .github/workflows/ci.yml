@@ -35,6 +35,24 @@ jobs:
         run: node --check scripts/validate-dubbridge-macos-e2e.mjs
       - name: Run DubBridge ActionProfile contract tests
         run: node --experimental-strip-types --test tests/dubbridge-profiles.test.ts
+      - name: Checkout DubBridge W2 integration branch
+        if: github.ref == 'refs/heads/feature/dubbridge-action-profiles'
+        uses: actions/checkout@v4
+        with:
+          repository: krukmat/dubbridge
+          ref: feature/haa-hitl-w1-contract-policy
+          path: dubbridge-w2
+      - uses: actions/setup-python@v5
+        if: github.ref == 'refs/heads/feature/dubbridge-action-profiles'
+        with:
+          python-version: '3.12'
+      - name: Install DubBridge HAA verification dependency
+        if: github.ref == 'refs/heads/feature/dubbridge-action-profiles'
+        run: python -m pip install --disable-pip-version-check -r dubbridge-w2/scripts/haa/requirements.txt
+      - name: Run DubBridge authority adapter tests
+        if: github.ref == 'refs/heads/feature/dubbridge-action-profiles'
+        working-directory: dubbridge-w2
+        run: sh scripts/haa/run-tests.sh
       - name: Build public protocol/SDK packages
         run: npm run build:packages
       - name: Type-check HAA with DubBridge profiles
