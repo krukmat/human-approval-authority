@@ -4,6 +4,17 @@ Status: **PARKED / NON-CANONICAL**
 
 DubBridge is deliberately outside the active HAA roadmap.
 
+On 2026-11-24, the owner requested a **local consumer-integration certification**
+on HAA branch `feature/dubbridge-action-profiles` and DubBridge branch
+`feature/haa-hitl-w3-request-verify`. `npm run validate:dubbridge-macos`
+passed both real Touch ID ceremonies (task start and synthetic plan close),
+with pre-approval denial, detached grant verification, and final `CONSUMED`
+states. The owner confirmed physically authorizing and reviewing both actions.
+This records a branch-local verification result; it does not activate a HAA
+product-integration wave or change the active HAA roadmap. The detailed
+evidence is in DubBridge
+`docs/audit/haa-macos-integration-certification-2026-11-24.md`.
+
 Do **not** execute task IDs previously defined in this file. The canonical active HAA plan is:
 
 - `docs/HAA-ACTIVE-ROADMAP.md`
