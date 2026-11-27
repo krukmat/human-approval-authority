@@ -2,7 +2,7 @@
   "schema": "workflow-authority-plan.v1",
   "source": "krukmat/dubbridge@bdae32e1e9167a18b12b8911df71d5982d25998c",
   "activation": "NO_GO",
-  "state": "RUNNER_CONTRACTS_PASS_HOST_AND_OPERATIONAL_INTEGRATION_PENDING",
+  "state": "HOST_INVENTORY_RECONCILED_EXCLUSIVE_REUSE_PENDING",
   "tasks": [
     {
       "id": "W1.T1",
@@ -316,6 +316,61 @@
       "touch_id": "NOT_TESTED",
       "activation": "NO_GO"
     },
-    "workflow_physical_authority_smoke": "SOURCE_PREPARED_NOT_RUN"
+    "workflow_physical_authority_smoke": "SOURCE_PREPARED_NOT_RUN",
+    "shared_host_inventory": {
+      "status": "PASS_INVENTORY_ONLY",
+      "source": "owner-supplied console output",
+      "tested_head": "9cf4db139f41fe85425e24c5384aec56078ae108",
+      "architecture": "arm64",
+      "identities": {
+        "executor": 471,
+        "worker": 472,
+        "verifier": 473
+      },
+      "groups": {
+        "471": [
+          471,
+          473,
+          12,
+          61,
+          701,
+          100
+        ],
+        "472": [
+          472,
+          12,
+          61,
+          701,
+          100
+        ],
+        "473": [
+          473,
+          12,
+          61,
+          701,
+          100
+        ]
+      },
+      "legacy_base": "PRESENT",
+      "shared_base": "NOT_FOUND",
+      "official_python_314": "PRESENT_ROOT_OWNED_REPORTED_PATHS_0755",
+      "acl": "NOT_TESTED",
+      "effective_sudo": "NOT_TESTED",
+      "runtime_dependencies": "NOT_TESTED",
+      "isolation": "NOT_CERTIFIED"
+    },
+    "host_reuse": {
+      "status": "CANDIDATE_EXCLUSIVE_REUSE",
+      "new_accounts": 0,
+      "new_python_distribution": 0,
+      "legacy_installation": "PRESERVE_NO_CONCURRENT_EXECUTION",
+      "new_code_state": "SEPARATE_WORKFLOW_ROOT",
+      "blockers": [
+        "EFFECTIVE_ACL_SUDO_AND_RUNTIME_PROVENANCE",
+        "LEGACY_RUNTIME_QUIESCENCE_AND_EXCLUSIVE_UID_USE",
+        "OWNER_REVIEWED_INSTALLATION_MANIFEST",
+        "HOST_EMPIRICAL_AND_COMPOSED_AUTHORITY_GATES"
+      ]
+    }
   }
 }
