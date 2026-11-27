@@ -30,7 +30,7 @@ class CandidateRunnerTest(unittest.TestCase):
         git("init", "-b", "test")
         git("config", "user.name", "Test")
         git("config", "user.email", "test@example.invalid")
-        git("remote", "add", "origin", "https://github.com/krukmat/workflow.git")
+        git("remote", "add", "origin", "https://github.com/example/workflow-fixture.git")
         (root / "README.md").write_text("base")
         git("add", "README.md")
         git("commit", "-m", "base")

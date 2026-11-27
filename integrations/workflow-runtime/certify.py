@@ -16,7 +16,7 @@ def step(label,argv,cwd,env,timeout=240):
     try:
         r=subprocess.run(argv,cwd=cwd,check=False,text=True,capture_output=True,timeout=timeout,env=env)
         return {"name":label,"status":"PASS" if r.returncode==0 else "FAIL",
-                "exit_code":r.returncode,"output":(r.stdout+r.stderr)[-30000:]}
+                "exit_code":r.returncode,"output":r.stdout+r.stderr}
     except (OSError,subprocess.TimeoutExpired) as e:
         return {"name":label,"status":"BLOCKED","reason":type(e).__name__}
 
@@ -37,16 +37,25 @@ def main():
         if before["status"]!="PASS" or before["output"].strip():
             print(json.dumps({"status":"BLOCKED","reason":"CLEAN_CHECKOUT_REQUIRED","activation":"NO_GO"}))
             return 1
+        head=step("head",["/usr/bin/git","rev-parse","HEAD"],REPO,env)
+        if head["status"]!="PASS":
+            print(json.dumps({"status":"BLOCKED","reason":"HEAD_UNAVAILABLE","activation":"NO_GO"}))
+            return 1
         modules=[p.stem for p in (ROOT/"scripts/haa").glob("*_test.py")]
         steps=[step("profile-tests",[node,"--experimental-strip-types","--test",
                 "tests/workflow-profiles.test.ts","tests/workflow-profile-parity.test.ts"],REPO,env),
-            step("python-regression",[sys.executable,"-m","unittest",*["scripts.haa."+m for m in sorted(modules)]],ROOT,env),
-            step("task-card-parser",[sys.executable,"-m","unittest","discover","-s","scripts/local-agent","-p","task_card_test.py"],ROOT,env),
-            step("microbenchmark",[sys.executable,"-m","scripts.haa.benchmark"],ROOT,env)]
+            step("python-regression",[sys.executable,"-B","-m","unittest",*["scripts.haa."+m for m in sorted(modules)]],ROOT,env),
+            step("task-card-parser",[sys.executable,"-B","-m","unittest","discover","-s","scripts/local-agent","-p","task_card_test.py"],ROOT,env),
+            step("microbenchmark",[sys.executable,"-B","-m","scripts.haa.benchmark"],ROOT,env)]
         after=step("post-checkout",["/usr/bin/git","status","--porcelain"],REPO,env)
         if after["output"].strip(): after["status"]="FAIL"
         steps.append(after)
+        end_head=step("head-after",["/usr/bin/git","rev-parse","HEAD"],REPO,env)
+        if end_head["output"].strip()!=head["output"].strip(): end_head["status"]="FAIL"
+        steps.append(end_head)
     result={"schema":"workflow.portable-gate.v1","steps":steps,
+        "head":head["output"].strip(),"python":sys.version.split()[0],
+        "runner_contract_integration":"NOT_RUN_EXTERNAL_RUNNER_REQUIRED",
         "status":"PASS_PORTABLE_ONLY" if all(x["status"]=="PASS" for x in steps) else "BLOCKED_OR_FAIL",
         "host_isolation":"NOT_TESTED","real_runner":"NOT_CERTIFIED","touch_id":"NOT_TESTED","activation":"NO_GO"}
     print(json.dumps(result,indent=2))

@@ -23,7 +23,7 @@ class PlanEntryTest(unittest.TestCase):
         self.git("init","-b","candidate")
         self.git("config","user.name","test")
         self.git("config","user.email","test@example.invalid")
-        self.git("remote","add","origin","https://github.com/krukmat/workflow.git")
+        self.git("remote","add","origin","https://github.com/example/workflow-fixture.git")
         (root/"docs").mkdir()
         (root/"docs/p.md").write_text("# p")
         (root/"docs/tasks.md").write_text("- [x] t")

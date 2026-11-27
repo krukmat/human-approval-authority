@@ -92,7 +92,7 @@ class ProtectedIntegrationTest(unittest.TestCase):
                 stderr=subprocess.DEVNULL,text=True).strip()
         git("init","-b","candidate");git("config","user.name","fixture")
         git("config","user.email","fixture@example.invalid")
-        git("remote","add","origin","https://github.com/krukmat/workflow.git")
+        git("remote","add","origin","https://github.com/example/workflow-fixture.git")
         (root/"README.md").write_text("before")
         (root/"docs").mkdir()
         (root/"docs/p.md").write_text("# Plan")

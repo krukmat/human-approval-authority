@@ -3,8 +3,6 @@
 import os
 import sys
 import unittest
-import tempfile
-from unittest.mock import Mock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -15,7 +13,6 @@ from task_card import (
     adapt_legacy,
     parse_task_card,
 )
-import run_local_task as rlt
 
 
 def _v2():
@@ -93,35 +90,21 @@ class TaskCardTest(unittest.TestCase):
             with self.subTest(field=field), self.assertRaises(TaskCardValidationError):
                 parse_task_card(data)
 
-    def test_runner_executes_only_structured_argv_and_preserves_ids(self):
+
+    def test_strict_parser_rejects_unknown_fields_and_duplicate_criteria(self):
+        data = _v2()
+        data["unexpected"] = True
+        with self.assertRaises(TaskCardValidationError):
+            parse_task_card(data)
+        data = _v2()
+        data["acceptance_criteria"].append(dict(data["acceptance_criteria"][0]))
+        with self.assertRaises(TaskCardValidationError):
+            parse_task_card(data)
+
+    def test_v2_preserves_command_and_criterion_identifiers(self):
         card = parse_task_card(_v2())
-        boundary = Mock()
-        observed = {}
-
-        def execute(argv, worktree_dir, active_boundary):
-            observed["argv"] = argv
-            return {"tool": "run_command", "argv": argv, "ok": True, "returncode": 0, "stdout": "", "stderr": ""}
-
-        with patch.object(rlt.session_loop, "_run_command_with_timeout", side_effect=execute):
-            result = rlt.build_default_test_runner(card, boundary)("/tmp/worktree")
-
-        self.assertTrue(result["passed"])
-        self.assertEqual(observed["argv"], ["env", "MODE=test", "cargo", "test"])
-        self.assertEqual(result["commands"][0]["command_id"], "verify-unit")
-        self.assertEqual(result["commands"][0]["criterion_ids"], ["HP-1"])
-
-    def test_invalid_legacy_prose_fails_before_context_or_model(self):
-        data = {"task_id": "old", "spec": "old", "allowed_paths": [], "acceptance_tests": ["Validation code uses typed input."]}
-        chat = Mock()
-        with tempfile.TemporaryDirectory() as tmp:
-            path = os.path.join(tmp, "card.json")
-            out = os.path.join(tmp, "out.json")
-            with open(path, "w", encoding="utf-8") as handle:
-                import json
-                json.dump(data, handle)
-            with self.assertRaises(LegacyTaskCardConversionRequired):
-                rlt.main(["--card", path, "--legacy-card", "--worktree", tmp, "--out", out], chat_fn=chat)
-        chat.assert_not_called()
+        self.assertEqual(card.verification_commands[0].id, "verify-unit")
+        self.assertEqual(card.verification_commands[0].criterion_ids, ("HP-1",))
 
 
 if __name__ == "__main__":

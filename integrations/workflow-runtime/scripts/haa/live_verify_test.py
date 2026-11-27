@@ -60,7 +60,7 @@ class LiveVerificationTest(unittest.TestCase):
         subprocess.run(["git", "init", "-q", "-b", "feature/test", str(root)], check=True)
         git(root, "config", "user.email", "test@example.invalid")
         git(root, "config", "user.name", "W3 Tests")
-        git(root, "remote", "add", "origin", "https://github.com/krukmat/workflow.git")
+        git(root, "remote", "add", "origin", "https://github.com/example/workflow-fixture.git")
         (root / "README.md").write_text("baseline\n", encoding="utf-8")
         git(root, "add", "README.md")
         git(root, "commit", "-qm", "test baseline")

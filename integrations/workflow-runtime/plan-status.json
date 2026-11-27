@@ -165,8 +165,29 @@
   ],
   "observed_tests": {
     "policy_module": "4/4 PASS isolated; exact source blob 1398674b7e7fcd563166d45d64ca38ce737c77d9",
-    "candidate_regression": "NOT_RUN",
+    "candidate_regression": "REPAIR_PREPARED_RERUN_REQUIRED",
     "host": "NOT_TESTED",
-    "real_runner": "NOT_CERTIFIED"
+    "real_runner": "NOT_CERTIFIED",
+    "first_portable_mac": {
+      "status": "BLOCKED_OR_FAIL",
+      "tested_head": "577113037adc75ec3e3dcd5a7d87b088aa521124",
+      "profile": "4/4 PASS",
+      "python": {
+        "total": 157,
+        "pass": 116,
+        "failures": 10,
+        "errors": 30,
+        "skipped": 1
+      },
+      "parser": "FAIL_MISSING_EXTERNAL_RUNNER",
+      "microbenchmark": {
+        "status": "PASS_SYNTHETIC",
+        "p95_increment_us": 55.833,
+        "p99_us": 70.917,
+        "peak_rss_native_units": 23838720
+      },
+      "post_checkout": "FAIL_GENERATED_BYTECODE"
+    },
+    "runner_contract_integration": "NOT_RUN_EXTERNAL_RUNNER_REQUIRED"
   }
 }

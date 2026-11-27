@@ -32,7 +32,7 @@ class LeaseGuardTest(unittest.TestCase):
         )
         git(root, "config", "user.email", "test@example.invalid")
         git(root, "config", "user.name", "HAA lease test")
-        git(root, "remote", "add", "origin", "https://github.com/krukmat/workflow.git")
+        git(root, "remote", "add", "origin", "https://github.com/example/workflow-fixture.git")
         (root / "README.md").write_text("base\n")
         git(root, "add", "README.md")
         git(root, "commit", "-qm", "baseline")

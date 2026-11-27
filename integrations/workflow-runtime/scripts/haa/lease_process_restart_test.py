@@ -72,7 +72,7 @@ class LeaseProcessRestartTest(unittest.TestCase):
         with TemporaryDirectory(prefix="haa-restart-") as tmp:
             directory=Path(tmp).resolve()
             def run(action):
-                return subprocess.run([sys.executable,"-I","-c",CHILD,
+                return subprocess.run([sys.executable,"-I","-B","-c",CHILD,
                                        str(ROOT),str(directory),action],
                                       capture_output=True,text=True,timeout=20)
             first=run(mode)
