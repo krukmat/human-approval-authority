@@ -2,7 +2,7 @@
   "schema": "workflow-authority-plan.v1",
   "source": "krukmat/dubbridge@bdae32e1e9167a18b12b8911df71d5982d25998c",
   "activation": "NO_GO",
-  "state": "W4_W5_CANDIDATE_PREPARED_INTEGRATED_GATE_PENDING",
+  "state": "RUNNER_CONTRACTS_PASS_HOST_AND_OPERATIONAL_INTEGRATION_PENDING",
   "tasks": [
     {
       "id": "W1.T1",
@@ -71,18 +71,18 @@
     },
     {
       "id": "W3.T4",
-      "status": "BATCH_CANDIDATE_EXTENDED",
-      "gate": "RERUN_REQUIRED"
+      "status": "PORTED_PORTABLE_PASS",
+      "gate": "PASS_PORTABLE_ONLY"
     },
     {
       "id": "W3.T5",
-      "status": "BATCH_CANDIDATE_EXTENDED",
-      "gate": "RERUN_REQUIRED"
+      "status": "PORTED_PORTABLE_PASS",
+      "gate": "PASS_PORTABLE_ONLY"
     },
     {
       "id": "W3.T6",
-      "status": "BATCH_CANDIDATE_EXTENDED",
-      "gate": "RERUN_REQUIRED"
+      "status": "PORTED_PORTABLE_PASS",
+      "gate": "PASS_PORTABLE_ONLY"
     },
     {
       "id": "W3.T7",
@@ -104,23 +104,23 @@
     },
     {
       "id": "W4.T3",
-      "status": "CANDIDATE_SOURCE_IMPLEMENTED"
+      "status": "TASK_CARD_PORTABLE_AND_NATIVE_CONTRACT_PASS"
     },
     {
       "id": "W4.T4",
-      "status": "NATIVE_WORKER_AND_BATCH_CHANNEL_CANDIDATE"
+      "status": "BATCH_AND_NATIVE_CONTRACT_PASS_ISOLATED_EXECUTION_PENDING"
     },
     {
       "id": "W4.T5",
-      "status": "HANDOFF_REVALIDATION_CANDIDATE"
+      "status": "HANDOFF_REGRESSION_PASS_PHYSICAL_PENDING"
     },
     {
       "id": "W4.T6",
-      "status": "POLICY_PIN_AND_EXISTING_ROUTE_PRESERVED_CANDIDATE"
+      "status": "POLICY_PIN_REGRESSION_PASS_OPERATIONAL_PENDING"
     },
     {
       "id": "W4.T7",
-      "status": "ADAPTERS_AND_GUIDE_CONTRACT_PREPARED_PRODUCT_HOOKS_UNCHANGED"
+      "status": "NATIVE_CONTRACT_PASS_PROJECT_HOOKS_UNCHANGED"
     },
     {
       "id": "W5.T1",
@@ -148,15 +148,15 @@
     },
     {
       "id": "W5.T6",
-      "status": "MATCHED_EVIDENCE_COMPARATOR_PASS_ISOLATED_FULL_AB_NOT_MEASURED"
+      "status": "MATCHED_COMPARATOR_REGRESSION_PASS_FULL_AB_NOT_MEASURED"
     },
     {
       "id": "W5.T7",
-      "status": "PORTABLE_AND_NATIVE_CONTRACT_GATE_PREPARED"
+      "status": "PORTABLE_AND_NATIVE_CONTRACT_GATE_PASS_PHYSICAL_PENDING"
     },
     {
       "id": "W5.T8",
-      "status": "SINGLE_CONTRACT_GATE_COMMAND_PREPARED_PHYSICAL_GATE_PENDING"
+      "status": "CONTRACT_COMMAND_PASS_FINAL_HOST_GATE_PENDING"
     },
     {
       "id": "W6.T1",
@@ -233,9 +233,10 @@
       "activation": "NO_GO"
     },
     "batch_candidate": {
-      "status": "7/29 PASS_ISOLATED_OTHER_22_NOT_RUN",
+      "status": "29/29 PASS_IN_PORTABLE_REGRESSION",
       "new_test_cases": 29,
-      "baseline_pass_sha": "202988b3df70fa048ab9dabd026390b79c81f4f7"
+      "baseline_pass_sha": "202988b3df70fa048ab9dabd026390b79c81f4f7",
+      "tested_head": "dc3e56d36cb2ca24b5d9b2f2034311fc7923f94a"
     },
     "standalone_candidate": {
       "status": "PASS_ISOLATED",
@@ -260,6 +261,61 @@
       ],
       "scope": "exact blob copies verified with git hash-object; standalone unittest, no repository checkout, no live runners"
     },
-    "integrated_gate": "RERUN_REQUIRED"
+    "integrated_gate": {
+      "status": "PASS_RUNNER_CONTRACTS_ONLY",
+      "source": "owner-supplied console output; not independently executed remotely",
+      "tested_head": "dc3e56d36cb2ca24b5d9b2f2034311fc7923f94a",
+      "python_version": "3.15.2",
+      "profile": {
+        "pass": 4
+      },
+      "python": {
+        "total": 186,
+        "pass": 185,
+        "skipped": 1,
+        "failures": 0,
+        "errors": 0,
+        "seconds": 20.705
+      },
+      "parser": {
+        "pass": 12
+      },
+      "dubbridge_runner": {
+        "pass": 2,
+        "head": "dd7dca5319c8356a81b2156836aa94b445e80c09",
+        "proof": "REAL_RUNNER_MOCKED_CONTRACT_TESTS"
+      },
+      "fenix_runner": {
+        "status": "PASS",
+        "head": "d178dd4e6e58b31016f7124eed6601eb264937c6",
+        "proof": "NATIVE_DRY_RUN",
+        "payload_digest": "bbc145100ece610926ce60f7901aeca95d64011c1250838d80b4f3749cb3ae03"
+      },
+      "totals": {
+        "pass": 203,
+        "skipped": 1,
+        "failed": 0,
+        "fenix_dry_run": "PASS_NOT_COUNTED_AS_UNIT_TEST"
+      },
+      "benchmark": {
+        "iterations": 1000,
+        "p50_us": 44.958,
+        "p95_us": 49.667,
+        "p99_us": 119.541,
+        "p95_increment_us": 49.542,
+        "cpu_ms": 47.148,
+        "peak_rss_native_units": 23937024,
+        "model_calls": 0,
+        "tokens": 0
+      },
+      "post_checkout": "PASS",
+      "head_after": "dc3e56d36cb2ca24b5d9b2f2034311fc7923f94a",
+      "actual_protected_runner": "NOT_CERTIFIED",
+      "full_workflow_ab": "NOT_MEASURED",
+      "host_isolation": "NOT_TESTED",
+      "touch_id": "NOT_TESTED",
+      "activation": "NO_GO"
+    },
+    "workflow_physical_authority_smoke": "SOURCE_PREPARED_NOT_RUN"
   }
 }
