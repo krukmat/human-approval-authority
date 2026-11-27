@@ -1,0 +1,612 @@
+{
+  "repository": "krukmat/dubbridge",
+  "commit": "bdae32e1e9167a18b12b8911df71d5982d25998c",
+  "files": [
+    {
+      "path": "docs/adr/ADR-049-haa-protected-executor-and-volatile-authority.md",
+      "blob": "09301465c9ceec4a9d7c04618a763f68c275b395",
+      "bytes": 6963,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-ad-consolidation-2026-11-24.md",
+      "blob": "26798c28437ef244fe1a562be82f03f9e677577f",
+      "bytes": 1225,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-candidate-ad-checkpoint-2026-11-24.md",
+      "blob": "40da5769504280ff3399d00822cb387978e899f9",
+      "bytes": 4150,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-e1-e3-local-validation-2026-11-24.md",
+      "blob": "0bc8409853801aeb077a0be6129aced6657cb2ed",
+      "bytes": 6362,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-macos-integration-certification-2026-11-24.md",
+      "blob": "07906334eb65414c6651e5a0e34218653c6f2495",
+      "bytes": 3478,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-protected-executor-checkpoint-2026-11-24.md",
+      "blob": "61ec7f825991c245d12b879e180a8500340416ff",
+      "bytes": 2593,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-s37-integrated-candidate-2026-11-24.md",
+      "blob": "73e4fe32bbb729482c47dc1c69bc4a29ce3cea0d",
+      "bytes": 4359,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-s40-regression-2026-11-24.md",
+      "blob": "b7cd537e558fc05ef1f78415423de430f13f3534",
+      "bytes": 1371,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-s41-host-inventory-2026-11-24.md",
+      "blob": "0f1dd8bd9b1938e2aaad9a526e1dd541e8f24d11",
+      "bytes": 2376,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-s41-official-runtime-verification-2026-11-24.md",
+      "blob": "b25891d947f568f4eb5c2dc51bc533e7c228dc0a",
+      "bytes": 12706,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-security-rebaseline-2026-11-24.md",
+      "blob": "94062afcaa04653d9bbbd93f0cf4a59a8299b128",
+      "bytes": 3377,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-w1-contract-review-2026-11-03.md",
+      "blob": "0e219bb0528d6f153752d95af60d036230244915",
+      "bytes": 3522,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/audit/haa-w2-w3-static-hardening-2026-11-24.md",
+      "blob": "b295b19ce600d3f31712c23382276c2fac5c3d44",
+      "bytes": 3347,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/plan/haa-hitl-integration.md",
+      "blob": "f5800832ee7a0915af7242f91fec1fcf473b4ee4",
+      "bytes": 13631,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/plan/haa-security-rebaseline.md",
+      "blob": "0d05822e1f9dbad7f316ba2fb9fe8a73a4bb8864",
+      "bytes": 5663,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_D3_RUNNER_COMPOSITION.md",
+      "blob": "05cfa2fdaedb9cdd0619b8cfb770fc178f9491f0",
+      "bytes": 3248,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_D4_NETWORK_AND_SHARING.md",
+      "blob": "bf8b37dab1f30a06f08a8ea1f3ab66866dadcce6",
+      "bytes": 3867,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_MACOS_IDENTITY_LAUNCH.md",
+      "blob": "34f6d85eff4f49991e3d8acb8f337c64b08812f7",
+      "bytes": 10816,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_MACOS_SYNTHETIC_GATE.md",
+      "blob": "e66e221cfd467a0fd7ecbbba96b5eb0782fc56f6",
+      "bytes": 10333,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_MACOS_W2_SMOKE.md",
+      "blob": "3e9b575fa29c6a5c2b80914360fb7afdceca94db",
+      "bytes": 3719,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_POST_G2_DELTA_GATE.md",
+      "blob": "e30741131aefa3fd84cfecb9d521ca3b08fdeab1",
+      "bytes": 7918,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_PROTECTED_MACOS_DEPLOYMENT.md",
+      "blob": "c59976ffb54caf89944c47869031aec6ac3edf6f",
+      "bytes": 6510,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_VERIFICATION_BACKEND.md",
+      "blob": "48f9d61a9e71794752aeb21c4752a089f165e882",
+      "bytes": 5168,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_W3_AUTHORITY_LEASE.md",
+      "blob": "a716e72ba610085e4004c9590abdc1eb6d21e56d",
+      "bytes": 5477,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_W3_CANDIDATE_RUNNER.md",
+      "blob": "b470041096c0cd15d9370d5158cbaf9c98b1b14b",
+      "bytes": 1177,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_W3_INTEGRATION_POINTS.md",
+      "blob": "bd0e6994072cb035f2c9d76bf4c220339987c78c",
+      "bytes": 6619,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_W3_RECOVERY.md",
+      "blob": "b19b30d73b759ec7d72c71a91a333ec45c0c0014",
+      "bytes": 5823,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_W3_REQUEST_VERIFY.md",
+      "blob": "2d944aa3635b16f62d9c9f289d59a013a84b42cc",
+      "bytes": 5533,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_W3_RUNNER_READINESS.md",
+      "blob": "6e166955675b3ada166bb75ac16213d2e701503d",
+      "bytes": 5018,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/playbooks/HAA_W4_CANDIDATE_CLOSURE.md",
+      "blob": "6b8b620b3c65a7bb5f0956a8e79b60824d9b9b7f",
+      "bytes": 1056,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/policies/HAA_WORKFLOW_AUTHORITY_POLICY.md",
+      "blob": "07e1150a9222de521da1197becb1d5806f48db39",
+      "bytes": 8792,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/tasks/haa-hitl-integration.md",
+      "blob": "9cf32f7a7c2dbb4c093b5fbfa7c89d78d7655571",
+      "bytes": 32067,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "docs/tasks/haa-security-rebaseline.md",
+      "blob": "e2936acfc135509944499ac7d40770d33f3f7bcd",
+      "bytes": 13798,
+      "classification": "historical-evidence-or-policy"
+    },
+    {
+      "path": "scripts/haa/adapter.py",
+      "blob": "72b6e75c04ac7c8f305dc9779041ac367e1418b6",
+      "bytes": 6134,
+      "classification": "host-or-fixture-adapter"
+    },
+    {
+      "path": "scripts/haa/adapter_test.py",
+      "blob": "841bc085d15454ebcd3b97a7477d86de0d330e4f",
+      "bytes": 1971,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/authority.py",
+      "blob": "af10909c39aeb899a7a125c19f35bfba67c16292",
+      "bytes": 2543,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/authority_lease.py",
+      "blob": "d82f0a2a578695446105d7812477b6e254b9164c",
+      "bytes": 11859,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/authority_lease_test.py",
+      "blob": "6865f967cb47d03cf673c9940f450cce1c9d97e8",
+      "bytes": 7620,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/authority_test.py",
+      "blob": "ed704df98f2879ed54b74209def3e78be3b809fb",
+      "bytes": 3465,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/boundary_detector.py",
+      "blob": "0d2ed9c2a59462ebd98349100668c36b3875165b",
+      "bytes": 5604,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/boundary_detector_test.py",
+      "blob": "5eb874a615ad4905dbf121aaa428222724946eb0",
+      "bytes": 5249,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/certify_candidate.py",
+      "blob": "c01cf19af617587c3df25772ccd72110acf7418d",
+      "bytes": 2406,
+      "classification": "host-or-fixture-adapter"
+    },
+    {
+      "path": "scripts/haa/client.py",
+      "blob": "5e8c8833b03e402f19198a560425ccb09a80f89f",
+      "bytes": 7134,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/client_test.py",
+      "blob": "3ff5543302e26e14e9e66713194ce00deba6bf16",
+      "bytes": 3542,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/contracts.py",
+      "blob": "2ed8df5de364df6e426cbd5cb429ed0ce3be9cb2",
+      "bytes": 9129,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/contracts_test.py",
+      "blob": "ec504e188906d66be17ae670ab86070039564b49",
+      "bytes": 4739,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/grants.py",
+      "blob": "348848f62c1b0529dc9a8f647ee2b2c621fa0724",
+      "bytes": 6958,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/grants_test.py",
+      "blob": "0148f3cfbe22c5d3173945d86f18ee619c432255",
+      "bytes": 4029,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/inspect_verifier_host.py",
+      "blob": "dcf39443bb367a1a2a93bab4d2ab81e9f2dd2bf9",
+      "bytes": 2766,
+      "classification": "host-or-fixture-adapter"
+    },
+    {
+      "path": "scripts/haa/lease_guard.py",
+      "blob": "fd690129bd744610965135b481cb617d08e527bd",
+      "bytes": 7208,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/lease_guard_test.py",
+      "blob": "c10afef3909c34076865b426484a0e79b13803c4",
+      "bytes": 8521,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/lease_process_restart_test.py",
+      "blob": "4a6d958104e965b66c9da46a4989faa5d795dd15",
+      "bytes": 3313,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/live_verify.py",
+      "blob": "73d217354df55daa3f67b3b26ac2bd6e9ac087f6",
+      "bytes": 12552,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/live_verify_test.py",
+      "blob": "5a76d786eeec2df63628956787de2643d3b71094",
+      "bytes": 9059,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/macos_verifier_launcher.py",
+      "blob": "41b36712bfc3d108fa4c8e6bedb97d41ece15c9e",
+      "bytes": 6185,
+      "classification": "host-or-fixture-adapter"
+    },
+    {
+      "path": "scripts/haa/macos_verifier_launcher_test.py",
+      "blob": "a31ff82939ba437ff205971416dec83895dad2c6",
+      "bytes": 5082,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/plan_closure.py",
+      "blob": "3726ccb4ef33e03812b193ea555e4203d254c519",
+      "bytes": 12256,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/plan_closure_test.py",
+      "blob": "8e37b6382063fcedf2e667bffa431b02ffb1091d",
+      "bytes": 6071,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/protected_broker.py",
+      "blob": "1c5bc5c8ef17f1b534fb60213b427647b1858188",
+      "bytes": 8116,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/protected_broker_test.py",
+      "blob": "05e856b3245a91885e9f4acf6016482a7fb4e325",
+      "bytes": 3883,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/protected_commit.py",
+      "blob": "7bd9a09077bdf3d188bd11c5f5f558624abcb146",
+      "bytes": 9990,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/protected_commit_test.py",
+      "blob": "51ca97d05ffac796522e3265ecf232aa555ca082",
+      "bytes": 4333,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/protected_credentials.py",
+      "blob": "72c48096f8ac1004d8a5abaee694fb4aaf180bdb",
+      "bytes": 2814,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/protected_credentials_test.py",
+      "blob": "8bb7e43767970173638543c419bc64873db17443",
+      "bytes": 1546,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/protected_host.py",
+      "blob": "cf10dc734b420a7d12a21ad0211c308057e7e9fc",
+      "bytes": 2867,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/protected_host_test.py",
+      "blob": "c390d567c59026b68dedab25ec5394daeeb5ab74",
+      "bytes": 1632,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/protected_integration_test.py",
+      "blob": "a66fad7c6e258cfbd2b17028686cf9fb6014f3a5",
+      "bytes": 8739,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/protected_plan.py",
+      "blob": "c2dd944f7db00323310d07577356ce4d4c83d85c",
+      "bytes": 11115,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/protected_plan_entry.py",
+      "blob": "0f9b5252f3a690f288267d3a2b8a089b0c633ee8",
+      "bytes": 10049,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/protected_plan_entry_test.py",
+      "blob": "36e5a685f86e0b87737bea1af7bf736cab02305a",
+      "bytes": 3644,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/protected_plan_test.py",
+      "blob": "93d48042ad2cc7b8d3775a4e5792dae499f41a4c",
+      "bytes": 2684,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/protected_plan_validation.py",
+      "blob": "fc4ca8296fddf21156f4c55e6330e3408a9867c8",
+      "bytes": 2200,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/protected_plan_validation_test.py",
+      "blob": "b735360875ba7f88fed72411569746dc7763fb88",
+      "bytes": 1619,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/protected_session.py",
+      "blob": "865c97195cef0f1749b33985b8b82ab1887789cb",
+      "bytes": 8730,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/protected_session_test.py",
+      "blob": "adaeb6862cfc5fcd0394c55511feca68f4451cf8",
+      "bytes": 2228,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/protected_supervisor.py",
+      "blob": "cb1d886719ae0e3a8f5191a3558e970302f41bf9",
+      "bytes": 5449,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/protected_supervisor_test.py",
+      "blob": "ac2069ccd8ca618671df2c855100d9e64250597b",
+      "bytes": 2936,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/protected_workflow.py",
+      "blob": "c19769e8f04799836b64675f991a74e3164157f7",
+      "bytes": 6780,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/protected_workflow_test.py",
+      "blob": "61eba8c3e1afbd06529a3b8a00c5a9c7c0ba745a",
+      "bytes": 3938,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/recovery.py",
+      "blob": "cc42010318f2665d729e359fa9c485b171e53389",
+      "bytes": 6778,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/recovery_test.py",
+      "blob": "e3fe8fd4870a870d4a540150303e5a237accdfc8",
+      "bytes": 8856,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/request_checkpoint.py",
+      "blob": "35fa2887effda704a5423fd781f801139af9f6a0",
+      "bytes": 11019,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/request_checkpoint_test.py",
+      "blob": "2dcb68f14e4d1a05a6d1e2477e5af86baccb5e4a",
+      "bytes": 5533,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/requirements-cp314-macos-arm64.lock.txt",
+      "blob": "515dc81eb7c990d9020e5229b82a75f219c04d03",
+      "bytes": 286,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/requirements.txt",
+      "blob": "0eea9966d20fc780f5742d400389fa1fc54b0719",
+      "bytes": 21,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/run-tests.sh",
+      "blob": "a06dc3504749295e4c4e75a1ddbc8a4e493fc10a",
+      "bytes": 1296,
+      "classification": "host-or-fixture-adapter"
+    },
+    {
+      "path": "scripts/haa/runner_authority.py",
+      "blob": "a429816b8b1d55d430b53c66168e689e59897414",
+      "bytes": 10380,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/runner_authority_test.py",
+      "blob": "90871964848c70129064713691bf7ac0de735492",
+      "bytes": 6841,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/runner_fixture_contract.py",
+      "blob": "0362ac62a70e5679e756b2da88ef1c3ac5224f1e",
+      "bytes": 1954,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/runner_fixture_probe.py",
+      "blob": "c7cd6dae7519151e44bc0aba3675850a77623cd6",
+      "bytes": 2479,
+      "classification": "host-or-fixture-adapter"
+    },
+    {
+      "path": "scripts/haa/sharing_probe.py",
+      "blob": "41952e2d9c65edbff022cc1a31f80374963f95e8",
+      "bytes": 1822,
+      "classification": "host-or-fixture-adapter"
+    },
+    {
+      "path": "scripts/haa/supervisor_fixture_probe.py",
+      "blob": "fcc706f2150fff866c8d4a0b459b5479c49c12b5",
+      "bytes": 6168,
+      "classification": "host-or-fixture-adapter"
+    },
+    {
+      "path": "scripts/haa/verification_backend.py",
+      "blob": "4d0636e7a64a15f2e817d717c681f0484bd446b4",
+      "bytes": 9939,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/verification_backend_test.py",
+      "blob": "d3849555ec259b5ca775a0b0a8da47ae62b9ed77",
+      "bytes": 4500,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/verify_launch.py",
+      "blob": "798b8e6363f9afbcf4a3836b91d43d5c1f113a7e",
+      "bytes": 4878,
+      "classification": "host-or-fixture-adapter"
+    },
+    {
+      "path": "scripts/haa/verify_launch_test.py",
+      "blob": "a84341c8bad824b2316d29992815bd1b38eb6fac",
+      "bytes": 1293,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/volatile_authority.py",
+      "blob": "1343339e3d6691d578a98ec00445e9e1287f4154",
+      "bytes": 7762,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/haa/volatile_authority_test.py",
+      "blob": "a584d55220da2cadee088ab01b767cf9999fd1c0",
+      "bytes": 4009,
+      "classification": "regression"
+    },
+    {
+      "path": "scripts/haa/worker_runner.py",
+      "blob": "dfcba33786e8d6115caa9b0172bf3e5b620fc6c3",
+      "bytes": 3243,
+      "classification": "runtime-candidate"
+    },
+    {
+      "path": "scripts/local-agent/task_card.py",
+      "blob": "57140880de026f8835d31657305d59f2f81d8aa1",
+      "bytes": 10983,
+      "classification": "repository-adapter"
+    },
+    {
+      "path": "scripts/local-agent/task_card_test.py",
+      "blob": "d86efb14917a8487fa371754ea240362b94fd040",
+      "bytes": 5410,
+      "classification": "regression"
+    }
+  ]
+}

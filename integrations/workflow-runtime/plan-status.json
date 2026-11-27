@@ -1,0 +1,39 @@
+{
+  "schema": "workflow-authority-plan.v1",
+  "source_branch": "feature/haa-hitl-w3-request-verify",
+  "activation": "NO_GO",
+  "waves": [
+    {
+      "id": "W1",
+      "tasks": 4,
+      "state": "DONE_DESIGN_BASELINE",
+      "evidence": "source-inventory.json and this freeze record"
+    },
+    {
+      "id": "W2",
+      "tasks": 6,
+      "state": "DESIGN_CANDIDATE",
+      "evidence": "README.md; generic policy adapter and profile parity require implementation"
+    },
+    {
+      "id": "W3",
+      "tasks": 8,
+      "state": "PENDING"
+    },
+    {
+      "id": "W4",
+      "tasks": 7,
+      "state": "PENDING"
+    },
+    {
+      "id": "W5",
+      "tasks": 8,
+      "state": "PENDING"
+    },
+    {
+      "id": "W6",
+      "tasks": 1,
+      "state": "PENDING_LOCAL_OWNER"
+    }
+  ]
+}
