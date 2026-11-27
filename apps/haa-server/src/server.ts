@@ -1,3 +1,5 @@
+import { ActionProfileRegistry, demoActionProfile, gitMergeProfile } from '../../../packages/core/src/actions.ts';
+import { workflowActionProfiles } from '../../../packages/core/src/workflow-actions.ts';
 import { SqliteStore } from '../../../packages/persistence-sqlite/src/index.ts';
 import { HaaApplication } from './application.ts';
 import { buildHttpServer } from './http.ts';
@@ -31,6 +33,9 @@ const app = new HaaApplication({
     return key ? { algorithm: key.algorithm, publicKeyPem: key.publicKeyPem } : null;
   },
   ...(webAuthn ? { webAuthn } : {}),
+  ...(process.env.HAA_WORKFLOW_PROFILES_ENABLED === '1' ? {
+    profiles: new ActionProfileRegistry([demoActionProfile, gitMergeProfile, ...workflowActionProfiles]),
+  } : {}),
 });
 
 if (process.env.HAA_DEV_BOOTSTRAP === '1') {

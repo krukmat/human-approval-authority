@@ -1,0 +1,21 @@
+{
+  "scope": {
+    "repository": "example/project",
+    "planId": "p",
+    "taskId": "t",
+    "sessionId": "s",
+    "branch": "feature/test",
+    "baseCommitSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "allowedPaths": [
+      "docs/ñ.md",
+      "src/a.py"
+    ],
+    "capabilities": [
+      "edit",
+      "test"
+    ]
+  },
+  "scopeDigest": "sha256:UdB9aUzBcnufofX2XME7jNFf0n2kasYyx1pdtt78lQI",
+  "actionDigest": "sha256:Hnl65wobC0O2vteHqB4q7tKlXtZTWGcsgeIBaxrzt1g",
+  "leaseTtlSeconds": 300
+}

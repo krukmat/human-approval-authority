@@ -1,39 +1,172 @@
 {
   "schema": "workflow-authority-plan.v1",
-  "source_branch": "feature/haa-hitl-w3-request-verify",
+  "source": "krukmat/dubbridge@bdae32e1e9167a18b12b8911df71d5982d25998c",
   "activation": "NO_GO",
-  "waves": [
+  "state": "CANDIDATE_IMPLEMENTED_PARTIAL_NOT_CERTIFIED",
+  "tasks": [
     {
-      "id": "W1",
-      "tasks": 4,
-      "state": "DONE_DESIGN_BASELINE",
-      "evidence": "source-inventory.json and this freeze record"
+      "id": "W1.T1",
+      "status": "DONE",
+      "evidence": "README.md; source-inventory.json"
     },
     {
-      "id": "W2",
-      "tasks": 6,
-      "state": "DESIGN_CANDIDATE",
-      "evidence": "README.md; generic policy adapter and profile parity require implementation"
+      "id": "W1.T2",
+      "status": "DONE",
+      "evidence": "README.md; source-inventory.json"
     },
     {
-      "id": "W3",
-      "tasks": 8,
-      "state": "PENDING"
+      "id": "W1.T3",
+      "status": "DONE",
+      "evidence": "README.md; source-inventory.json"
     },
     {
-      "id": "W4",
-      "tasks": 7,
-      "state": "PENDING"
+      "id": "W1.T4",
+      "status": "DONE",
+      "evidence": "README.md; source-inventory.json"
     },
     {
-      "id": "W5",
-      "tasks": 8,
-      "state": "PENDING"
+      "id": "W2.T1",
+      "status": "DESIGN_DONE",
+      "evidence": "README.md; workflow-actions.ts; policy.py"
     },
     {
-      "id": "W6",
-      "tasks": 1,
-      "state": "PENDING_LOCAL_OWNER"
+      "id": "W2.T2",
+      "status": "DESIGN_DONE",
+      "evidence": "README.md; workflow-actions.ts; policy.py"
+    },
+    {
+      "id": "W2.T3",
+      "status": "DESIGN_DONE",
+      "evidence": "README.md; workflow-actions.ts; policy.py"
+    },
+    {
+      "id": "W2.T4",
+      "status": "DESIGN_DONE",
+      "evidence": "README.md; workflow-actions.ts; policy.py"
+    },
+    {
+      "id": "W2.T5",
+      "status": "DESIGN_DONE",
+      "evidence": "README.md; workflow-actions.ts; policy.py"
+    },
+    {
+      "id": "W2.T6",
+      "status": "DESIGN_DONE",
+      "evidence": "README.md; workflow-actions.ts; policy.py"
+    },
+    {
+      "id": "W3.T1",
+      "status": "CANDIDATE_SOURCE_PORTED",
+      "gate": "INTEGRATED_REGRESSION_PENDING"
+    },
+    {
+      "id": "W3.T2",
+      "status": "CANDIDATE_SOURCE_PORTED",
+      "gate": "INTEGRATED_REGRESSION_PENDING"
+    },
+    {
+      "id": "W3.T3",
+      "status": "CANDIDATE_SOURCE_PORTED",
+      "gate": "INTEGRATED_REGRESSION_PENDING"
+    },
+    {
+      "id": "W3.T4",
+      "status": "CANDIDATE_SOURCE_PORTED",
+      "gate": "INTEGRATED_REGRESSION_PENDING"
+    },
+    {
+      "id": "W3.T5",
+      "status": "CANDIDATE_SOURCE_PORTED",
+      "gate": "INTEGRATED_REGRESSION_PENDING"
+    },
+    {
+      "id": "W3.T6",
+      "status": "CANDIDATE_SOURCE_PORTED",
+      "gate": "INTEGRATED_REGRESSION_PENDING"
+    },
+    {
+      "id": "W3.T7",
+      "status": "CANDIDATE_SOURCE_PORTED",
+      "gate": "INTEGRATED_REGRESSION_PENDING"
+    },
+    {
+      "id": "W3.T8",
+      "status": "CANDIDATE_SOURCE_PORTED",
+      "gate": "INTEGRATED_REGRESSION_PENDING"
+    },
+    {
+      "id": "W4.T1",
+      "status": "DONE_ANALYSIS"
+    },
+    {
+      "id": "W4.T2",
+      "status": "DONE_DESIGN"
+    },
+    {
+      "id": "W4.T3",
+      "status": "CANDIDATE_SOURCE_IMPLEMENTED"
+    },
+    {
+      "id": "W4.T4",
+      "status": "PARTIAL_RUNNER_WIRING_PENDING"
+    },
+    {
+      "id": "W4.T5",
+      "status": "PARTIAL_HANDOFF_PENDING"
+    },
+    {
+      "id": "W4.T6",
+      "status": "CANDIDATE_POLICY_DESIGN"
+    },
+    {
+      "id": "W4.T7",
+      "status": "PARTIAL_PROJECT_HOOKS_UNCHANGED"
+    },
+    {
+      "id": "W5.T1",
+      "status": "REGRESSION_SOURCES_PREPARED",
+      "gate": "NOT_RUN"
+    },
+    {
+      "id": "W5.T2",
+      "status": "REGRESSION_SOURCES_PREPARED",
+      "gate": "NOT_RUN"
+    },
+    {
+      "id": "W5.T3",
+      "status": "REGRESSION_SOURCES_PREPARED",
+      "gate": "NOT_RUN"
+    },
+    {
+      "id": "W5.T4",
+      "status": "REGRESSION_SOURCES_PREPARED",
+      "gate": "NOT_RUN"
+    },
+    {
+      "id": "W5.T5",
+      "status": "MICROBENCHMARK_PREPARED"
+    },
+    {
+      "id": "W5.T6",
+      "status": "SYNTHETIC_COMPARISON_ONLY"
+    },
+    {
+      "id": "W5.T7",
+      "status": "PORTABLE_HARNESS_PREPARED_PHYSICAL_PENDING"
+    },
+    {
+      "id": "W5.T8",
+      "status": "PORTABLE_COMMAND_PREPARED"
+    },
+    {
+      "id": "W6.T1",
+      "status": "PENDING_LOCAL_OWNER"
     }
-  ]
+  ],
+  "observed_tests": {
+    "policy_module": "4/4 PASS isolated; exact source blob 1398674b7e7fcd563166d45d64ca38ce737c77d9",
+    "candidate_regression": "NOT_RUN",
+    "host": "NOT_TESTED",
+    "real_runner": "NOT_CERTIFIED"
+  }
 }
