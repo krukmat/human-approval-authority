@@ -37,4 +37,11 @@ exec python3 -m unittest \
   scripts.haa.protected_credentials_test \
   scripts.haa.protected_plan_validation_test \
   scripts.haa.policy_test \
-  scripts.haa.workflow_contract_parity_test
+  scripts.haa.workflow_contract_parity_test \
+  scripts.haa.batch_commit_test \
+  scripts.haa.submit_batch_test \
+  scripts.haa.project_bridge_test \
+  scripts.haa.handoff_test \
+  scripts.haa.native_batch_worker_test \
+  scripts.haa.native_worker_invocation_test \
+  scripts.haa.compare_workflow_test

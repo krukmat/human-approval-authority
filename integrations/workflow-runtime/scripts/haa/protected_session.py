@@ -109,6 +109,19 @@ class ProtectedSession:
                     pass
                 raise
 
+    def authorize_handoff(self, requested):
+        """Owner channel only, before a worker proposal window is opened."""
+        from scripts.haa.handoff import validate_handoff
+        with self._lock:
+            if self._closed or self._authority is None or self._worker_window_used:
+                raise SessionError("HANDOFF_WINDOW_UNAVAILABLE")
+            try:
+                return validate_handoff(self._authority, requested, worker_uid=self.layout.worker_uid)
+            except BaseException:
+                # A scope/identity mismatch must never leave the old session usable.
+                self.close()
+                raise
+
     def serve_worker(self, listener: socket.socket, *, duration_seconds: int = 60):
         """Serve an already protected Unix listener, for a bounded window.
 

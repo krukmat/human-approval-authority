@@ -29,7 +29,11 @@ def _absolute(path):
 def local_invocation(*, repository, rri, task_id, paths, python, scratch,
                      runner, input_file, output_file, dry_run=False):
     """Build existing CLI only; never infer that local delegation is eligible."""
-    for p in (python,scratch,runner,input_file,output_file):
+    # Preserve the selected virtualenv interpreter path; resolving its symlink
+    # can silently drop the venv. This argv is executed only by the worker.
+    if not isinstance(python,Path) or not python.is_absolute():
+        raise BridgeError("ABSOLUTE_INTERPRETER_REQUIRED")
+    for p in (scratch,runner,input_file,output_file):
         _absolute(p)
     if not scratch.is_dir() or not runner.is_file() or not input_file.is_file():
         raise BridgeError("RUNNER_INPUT_MISSING")

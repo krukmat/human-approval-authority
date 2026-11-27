@@ -102,7 +102,7 @@ class ProtectedSupervisor:
                 raise SupervisorError("NO_ACTIVE_SESSION")
             return self.active.poll()
 
-    def execute(self,listener,*,duration_seconds=60):
+    def execute(self,listener,*,duration_seconds=60,handoff=None):
         """Requires already approved session; worker runs separately.
 
         A successful scratch process is not proof. Only a broker-accepted
@@ -114,6 +114,8 @@ class ProtectedSupervisor:
             session=self.active
             try:
                 session.activate()
+                if handoff is not None:
+                    session.authorize_handoff(handoff)
                 session.serve_worker(listener,duration_seconds=duration_seconds)
                 edit=session._accepted_edit
                 if edit is None:

@@ -2,7 +2,7 @@
   "schema": "workflow-authority-plan.v1",
   "source": "krukmat/dubbridge@bdae32e1e9167a18b12b8911df71d5982d25998c",
   "activation": "NO_GO",
-  "state": "BATCH_AND_PROJECT_ADAPTER_CANDIDATE_REGRESSION_PENDING",
+  "state": "W4_W5_CANDIDATE_PREPARED_INTEGRATED_GATE_PENDING",
   "tasks": [
     {
       "id": "W1.T1",
@@ -108,19 +108,19 @@
     },
     {
       "id": "W4.T4",
-      "status": "BATCH_IPC_AND_NATIVE_ARGV_CANDIDATE"
+      "status": "NATIVE_WORKER_AND_BATCH_CHANNEL_CANDIDATE"
     },
     {
       "id": "W4.T5",
-      "status": "SAME_UID_BOUNDARY_RETAINED_HANDOFF_PENDING"
+      "status": "HANDOFF_REVALIDATION_CANDIDATE"
     },
     {
       "id": "W4.T6",
-      "status": "CANDIDATE_POLICY_DESIGN"
+      "status": "POLICY_PIN_AND_EXISTING_ROUTE_PRESERVED_CANDIDATE"
     },
     {
       "id": "W4.T7",
-      "status": "NATIVE_ADAPTERS_PREPARED_PROJECT_HOOKS_UNCHANGED"
+      "status": "ADAPTERS_AND_GUIDE_CONTRACT_PREPARED_PRODUCT_HOOKS_UNCHANGED"
     },
     {
       "id": "W5.T1",
@@ -148,15 +148,15 @@
     },
     {
       "id": "W5.T6",
-      "status": "SYNTHETIC_PASS_FULL_WORKFLOW_AB_PENDING"
+      "status": "MATCHED_EVIDENCE_COMPARATOR_PASS_ISOLATED_FULL_AB_NOT_MEASURED"
     },
     {
       "id": "W5.T7",
-      "status": "PORTABLE_HARNESS_PASS_PHYSICAL_PENDING"
+      "status": "PORTABLE_AND_NATIVE_CONTRACT_GATE_PREPARED"
     },
     {
       "id": "W5.T8",
-      "status": "PORTABLE_COMMAND_PASS_FINAL_COMMAND_PENDING"
+      "status": "SINGLE_CONTRACT_GATE_COMMAND_PREPARED_PHYSICAL_GATE_PENDING"
     },
     {
       "id": "W6.T1",
@@ -233,9 +233,33 @@
       "activation": "NO_GO"
     },
     "batch_candidate": {
-      "status": "NOT_RUN",
-      "new_test_cases": 16,
+      "status": "7/29 PASS_ISOLATED_OTHER_22_NOT_RUN",
+      "new_test_cases": 29,
       "baseline_pass_sha": "202988b3df70fa048ab9dabd026390b79c81f4f7"
-    }
+    },
+    "standalone_candidate": {
+      "status": "PASS_ISOLATED",
+      "pass": 7,
+      "files": [
+        {
+          "path": "scripts/haa/project_bridge.py",
+          "blob": "362036eaafe2cdfbc33ac29ec36f53c260eebf6f"
+        },
+        {
+          "path": "scripts/haa/project_bridge_test.py",
+          "blob": "b3c7eb2bbb842f6dc02347a10afbbd52a4f3f8db"
+        },
+        {
+          "path": "scripts/haa/compare_workflow.py",
+          "blob": "032e728eb5fa623c9abae4891185ff58b2257271"
+        },
+        {
+          "path": "scripts/haa/compare_workflow_test.py",
+          "blob": "6300b98ada506bce4eab5bb1f5bfba93b18b4d11"
+        }
+      ],
+      "scope": "exact blob copies verified with git hash-object; standalone unittest, no repository checkout, no live runners"
+    },
+    "integrated_gate": "RERUN_REQUIRED"
   }
 }
