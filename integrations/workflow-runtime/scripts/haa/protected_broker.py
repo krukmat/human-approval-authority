@@ -168,6 +168,22 @@ class WorkerBroker:
             if msg == {"op": "status"}:
                 # Non-authorizing status; no credentials/lease ID exposed.
                 return {"status": "BROKER_REACHABLE", "window": self._window}
+            if msg.get("op") == "replace_batch":
+                if set(msg) != {"op", "window", "changes"} or msg["window"] != self._window:
+                    raise BrokerError("INVALID_BATCH_WINDOW")
+                from scripts.haa.batch_commit import parse_batch
+                proposal = parse_batch(msg["changes"])
+                with self.authority._lock:
+                    self.authority._require_started()
+                    for path in proposal.paths:
+                        self.authority.existing.check_write(path)
+                    self.authority._check("edit", proposal.paths)
+                    self.authority._check("commit", proposal.paths)
+                    self.authority._check("test")
+                # No target writes. Executor validates exact tracked preimages
+                # and verifies the candidate tree before any publication.
+                self._accepted = proposal
+                return {"status": "BATCH_ACCEPTED", "paths": list(proposal.paths)}
             if set(msg) != {"op", "window", "path", "before_sha256", "content"} or msg["op"] != "replace":
                 raise BrokerError("UNSUPPORTED_PROPOSAL")
             if msg["window"] != self._window:

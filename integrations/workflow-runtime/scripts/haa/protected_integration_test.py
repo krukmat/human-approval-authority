@@ -24,6 +24,7 @@ from scripts.haa.contracts import canonicalize,digest_json
 from scripts.haa.live_verify import TrustedAuthorityPin,TrustedTask,bind_trusted_task
 from scripts.haa.protected_broker import WorkerBroker
 from scripts.haa.protected_commit import ProtectedCommit,VerificationResult
+from scripts.haa.batch_commit import BatchCommit
 from scripts.haa.protected_plan_entry import ApprovedPlan,initialize_plan,PlanCloseController
 from scripts.haa.protected_workflow import ProtectedWorkflow
 from scripts.haa.request_checkpoint import CheckpointStore,reconcile_status
@@ -83,6 +84,12 @@ from scripts.haa.policy import pin_policy
 
 class ProtectedIntegrationTest(unittest.TestCase):
     def test_signed_task_to_commit_to_separately_signed_plan_close(self):
+        self._exercise(batch=False)
+
+    def test_signed_batch_to_commit_to_separately_signed_plan_close(self):
+        self._exercise(batch=True)
+
+    def _exercise(self, *, batch):
         temp=TemporaryDirectory();self.addCleanup(temp.cleanup)
         base=Path(temp.name).resolve()
         root=base/"repo";root.mkdir()
@@ -94,17 +101,20 @@ class ProtectedIntegrationTest(unittest.TestCase):
         git("config","user.email","fixture@example.invalid")
         git("remote","add","origin","https://github.com/example/workflow-fixture.git")
         (root/"README.md").write_text("before")
+        paths=("OTHER.md","README.md") if batch else ("README.md",)
+        if batch:
+            (root/"OTHER.md").write_text("other")
         (root/"docs").mkdir()
         (root/"docs/p.md").write_text("# Plan")
         (root/"docs/tasks.md").write_text("- [ ] t")
         card=root/"card.json"
         card.write_text(json.dumps({"schema_version":2,"card_id":"t","task_id":"t",
-            "spec":"Change README","allowed_paths":["README.md"],
+            "spec":"Change README","allowed_paths":list(paths),
             "acceptance_criteria":[{"id":"HP-1","statement":"README candidate"}],
             "verification_commands":[{"id":"check","criterion_ids":["HP-1"],
                                       "argv":["/usr/bin/true"]}],
             "rri":55,"band":"Med-high","plan":"docs/p.md"}))
-        git("add","README.md","docs","card.json");git("commit","-m","base")
+        git("add",*paths,"docs","card.json");git("commit","-m","base")
         approved=ApprovedPlan("example/workflow-fixture","p","candidate",git("rev-parse","HEAD"),
             "docs/p.md",sha256(b"# Plan").hexdigest(),"docs/tasks.md",
             sha256(b"- [ ] t").hexdigest(),("t",))
@@ -135,20 +145,34 @@ class ProtectedIntegrationTest(unittest.TestCase):
         worker_uid=os.geteuid()+1
         broker=WorkerBroker(authority,worker_uid=worker_uid)
         window=broker.dispatch(worker_uid,{"op":"status"})["window"]
-        broker.dispatch(worker_uid,{"op":"replace","window":window,"path":"README.md",
-             "before_sha256":sha256(b"before").hexdigest(),"content":"candidate"})
+        if batch:
+            response=broker.dispatch(worker_uid,{"op":"replace_batch","window":window,"changes":[
+                {"path":"README.md","before_sha256":sha256(b"before").hexdigest(),"content":"candidate"},
+                {"path":"OTHER.md","before_sha256":sha256(b"other").hexdigest(),"content":"second"}]})
+            self.assertEqual(response["status"],"BATCH_ACCEPTED")
+            self.assertEqual((root/"README.md").read_text(),"before")
+            accepted=broker.seal()
+        else:
+            broker.dispatch(worker_uid,{"op":"replace","window":window,"path":"README.md",
+                 "before_sha256":sha256(b"before").hexdigest(),"content":"candidate"})
+            accepted=broker.seal()
         verifier=Mock()
         def fixture_verify(candidate,commands):
             # Verification fixture checks the exact Git tree; no claim of
             # isolated real command provenance.
             self.assertEqual(git("show",candidate.tree+":README.md"),"candidate")
+            if batch:
+                self.assertEqual(git("show",candidate.tree+":OTHER.md"),"second")
+                self.assertEqual((root/"README.md").read_text(),"before")
+                self.assertEqual((root/"OTHER.md").read_text(),"other")
             self.assertEqual(commands,(("/usr/bin/true",),))
             return VerificationResult(candidate.tree,candidate.session,candidate.commands_digest,
                                       (0,),digest_json({"fixture":"tree checked"}))
         verifier.verify.side_effect=fixture_verify
-        workflow=ProtectedWorkflow(commit_adapter=ProtectedCommit(authority,state=state,verifier=verifier),
-                                   plan=plan)
-        completion=workflow.complete_task(("README.md",))
+        adapter=(BatchCommit(authority,state=state,verifier=verifier,proposal=accepted) if batch else
+                 ProtectedCommit(authority,state=state,verifier=verifier,accepted_edit=accepted))
+        workflow=ProtectedWorkflow(commit_adapter=adapter,plan=plan)
+        completion=workflow.complete_task(paths)
         self.assertEqual(plan.read_snapshot().completed_tasks,("t",))
         self.assertEqual(plan.read_snapshot().workflow_state,"ACTIVE")
         self.assertEqual(git("rev-parse","HEAD"),completion["commit"])

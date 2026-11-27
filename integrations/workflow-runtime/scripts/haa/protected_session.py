@@ -160,20 +160,24 @@ class ProtectedSession:
 
     def complete_task(self, *, plan, verifier, paths: tuple[str,...]):
         from scripts.haa.protected_commit import ProtectedCommit
+        from scripts.haa.batch_commit import BatchProposal, BatchCommit
         from scripts.haa.protected_workflow import ProtectedWorkflow
         with self._lock:
             if self._closed or self._authority is None or self._accepted_edit is None:
                 raise SessionError("ACCEPTED_WORKER_PROPOSAL_REQUIRED")
-            if paths != (self._accepted_edit[0],):
+            batch = isinstance(self._accepted_edit, BatchProposal)
+            expected_paths = self._accepted_edit.paths if batch else (self._accepted_edit[0],)
+            if paths != expected_paths:
                 self.close()
                 raise SessionError("COMMIT_PATH_NOT_BROKER_ACCEPTED")
             if not plan.directory.resolve().is_relative_to(self.layout.state):
                 raise SessionError("PLAN_OUTSIDE_PROTECTED_STATE")
             try:
-                workflow = ProtectedWorkflow(
-                    commit_adapter=ProtectedCommit(self._authority,state=self.layout.state,
-                                                   verifier=verifier,
-                                                   accepted_edit=self._accepted_edit),plan=plan)
+                adapter = (BatchCommit(self._authority, state=self.layout.state, verifier=verifier,
+                                       proposal=self._accepted_edit) if batch else
+                           ProtectedCommit(self._authority, state=self.layout.state, verifier=verifier,
+                                           accepted_edit=self._accepted_edit))
+                workflow = ProtectedWorkflow(commit_adapter=adapter, plan=plan)
                 return workflow.complete_task(paths)
             finally:
                 self.close()

@@ -92,8 +92,12 @@ def pin_policy(*, root, repository, card_sha256, rri, requires_haa,
 
 
 PROJECT_SOURCES = {
-    "krukmat/fenix": ("docs/playbooks/AGENT_WORKFLOW_GUIDE.md", "docs/policies/HITL_AUTONOMY_POLICY.md", "AGENTS.md", "CLAUDE.md"),
-    "krukmat/dubbridge": ("docs/playbooks/AGENT_WORKFLOW_GUIDE.md", "docs/policies/HITL_AUTONOMY_POLICY.md", "AGENTS.md", "CLAUDE.md"),
+    "krukmat/fenix": ("README_AGENT_ORDER.md", "AGENTS.md", "CLAUDE.md",
+        "docs/playbooks/AGENT_WORKFLOW_GUIDE.md", "docs/policies/HITL_AUTONOMY_POLICY.md",
+        "docs/policies/RRI_POLICY.md", "docs/policies/LOCAL_MODEL_POLICY.md"),
+    "krukmat/dubbridge": ("README_AGENT_ORDER.md", "AGENTS.md", "CLAUDE.md",
+        "docs/playbooks/AGENT_WORKFLOW_GUIDE.md", "docs/policies/HITL_AUTONOMY_POLICY.md",
+        "docs/policies/RRI_POLICY.md"),
 }
 
 

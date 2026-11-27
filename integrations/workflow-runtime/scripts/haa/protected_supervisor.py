@@ -118,8 +118,9 @@ class ProtectedSupervisor:
                 edit=session._accepted_edit
                 if edit is None:
                     raise SupervisorError("NO_ACCEPTED_EDIT")
-                result=session.complete_task(plan=self.plan,verifier=self.verifier,
-                                             paths=(edit[0],))
+                from scripts.haa.batch_commit import BatchProposal
+                paths = edit.paths if isinstance(edit, BatchProposal) else (edit[0],)
+                result=session.complete_task(plan=self.plan,verifier=self.verifier, paths=paths)
                 self.active=None
                 return result
             except BaseException:
