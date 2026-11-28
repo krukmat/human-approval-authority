@@ -37,6 +37,19 @@ channel was installed. GO for minimal opt-in adoption under existing project
 policies; activation NO_GO. The prior host work remains frozen. No project
 repository modifications, no additional complexity or ceremony proposed.
 
+## W5 — adoption preparation
+
+Read Fénix and DubBridge main guides, governing HITL/RRI, AGENTS/CLAUDE.
+Exact additive opt-in insertions recorded in README.md; both anchor and
+reconstruction checks PASS. Fénix docs-only does not exempt task-readiness
+review; DubBridge docs-only exempts band phase-review but not applicable
+QA. Remote checkout is unavailable (git ls-remote DNS failure, no
+claude/codex/ollama executables); no review verdict or local QA fabricated.
+W5.T1/T2 prepared but not published; W5.T3 documentation done; W5.T4
+static compatibility review done; W5.T5 deferred to next real opted-in
+HITL task. Preserve both product repositories and the development pause.
+No new model, dependency or complexity. Activation NO_GO.
+
 ## Historical integration log (frozen scope)
 
 # Candidate integration and certification handoff

@@ -2,7 +2,7 @@
   "schema": "workflow-authority-plan.v1",
   "source": "krukmat/dubbridge@bdae32e1e9167a18b12b8911df71d5982d25998c",
   "activation": "NO_GO",
-  "state": "SIMPLIFIED_CHECKPOINT_PHYSICAL_PASS_ADOPTION_PENDING",
+  "state": "PHYSICAL_PASS_ADOPTION_INSERTIONS_PREPARED_PUBLICATION_BLOCKED",
   "tasks": [
     {
       "id": "W1.T1",
@@ -48,6 +48,31 @@
       "id": "W4.T1",
       "status": "PASS_COOPERATIVE_CHECKPOINT_PHYSICAL",
       "evidence": "Owner console excerpt at 20880e01351aa49154894b15d1c5cb28229511e5; native signed macOS approver and Secure Enclave; waiting checkpoint; verified Touch ID; unchanged synthetic Git target; no model executed"
+    },
+    {
+      "id": "W5.T1",
+      "status": "INSERTION_PREPARED_PUBLICATION_BLOCKED",
+      "evidence": "README.md; Fenix main c01554d8ce819005ca5c542059cac10a9860332d; existing mandatory readiness review and QA unavailable"
+    },
+    {
+      "id": "W5.T2",
+      "status": "INSERTION_PREPARED_PUBLICATION_BLOCKED",
+      "evidence": "README.md; DubBridge main ec3314ef594f8afcd25b487ef946789ee74cb7ee; existing applicable local QA unavailable"
+    },
+    {
+      "id": "W5.T3",
+      "status": "DONE",
+      "evidence": "README.md; checkpoint invocation and opt-in guide insertions"
+    },
+    {
+      "id": "W5.T4",
+      "status": "STATIC_COMPATIBILITY_REVIEW_PASS",
+      "evidence": "Both source guides and policy precedence reviewed; single-anchor additive scope checks PASS; no independent reviewer or repo QA claimed"
+    },
+    {
+      "id": "W5.T5",
+      "status": "PENDING_NEXT_REAL_OPT_IN_TASK",
+      "evidence": "No additional artificial test; adopt after required publication gates and resume existing work"
     }
   ],
   "observed_tests": {
@@ -447,5 +472,30 @@
     ],
     "activation": "NO_GO",
     "disposition": "FROZEN_OUT_OF_SCOPE; no deployment or host certification required by simplified plan"
+  },
+  "adoption": {
+    "status": "PREPARED_NOT_PUBLISHED",
+    "fenix": {
+      "head": "c01554d8ce819005ca5c542059cac10a9860332d",
+      "blob": "fbf02901abeec65f3a5d0db388c1c08d6fa05692",
+      "original_lines": 346,
+      "added_lines": 27,
+      "check": "PASS_ADDITIVE_SINGLE_ANCHOR"
+    },
+    "dubbridge": {
+      "head": "ec3314ef594f8afcd25b487ef946789ee74cb7ee",
+      "blob": "dc88674d76bf562ff516860eeb223ef470b057ce",
+      "original_lines": 2027,
+      "added_lines": 29,
+      "check": "PASS_ADDITIVE_SINGLE_ANCHOR"
+    },
+    "blockers": [
+      "NO_LOCAL_CHECKOUT_OR_GITHUB_DNS_IN_EXECUTION_ENVIRONMENT",
+      "FENIX_REQUIRED_INDEPENDENT_READINESS_REVIEW_NOT_RUN",
+      "REPOSITORY_LOCAL_QA_NOT_RUN"
+    ],
+    "activation": "NO_GO",
+    "product_changes": 0,
+    "additional_components": 0
   }
 }

@@ -91,6 +91,108 @@ this code. No Fénix or DubBridge files were modified; the common guide
 insertion is prepared here for later adoption under each project's own
 rules. Do not claim installed hooks or automatic interception of prompts.
 
+## W5 — opt-in adoption, prepared insertions (not applied)
+
+Owner approved W5.T1–T5. W5.T1/T2 source edits are prepared, not published
+to either product repository. Both repositories retain their original
+governance. The project work pause remains in effect; no product
+implementation or real task has been started. The following exact English
+insertions can be applied when the existing repository gates permit.
+The linked contract is pinned to the physical PASS source, not a mutable
+branch or a second implementation.
+
+### Fénix
+
+Reviewed main `c01554d8ce819005ca5c542059cac10a9860332d`; guide blob `fbf02901abeec65f3a5d0db388c1c08d6fa05692`.
+Target `docs/playbooks/AGENT_WORKFLOW_GUIDE.md`; insert immediately before `## Verification and push discipline`.
+Only an additive change. `CLAUDE.md` and the HITL policy remain authoritative.
+Mandatory independent task-readiness review applies even to docs-only tasks.
+The relevant reviewer and local QA are not available in the remote session.
+Do not publish without satisfying the existing gates.
+
+```markdown
+### Optional HAA task-start approval
+
+When the existing policy requires task-start human approval and the owner
+explicitly selects HAA as the approval channel for that task, the
+orchestrator uses the [validated HAA checkpoint](https://github.com/krukmat/human-approval-authority/blob/20880e01351aa49154894b15d1c5cb28229511e5/integrations/workflow-runtime/README.md#minimal-workflow-guide-insertion-contract-not-installed)
+instead of the ordinary approval interaction. Resolve scope, RRI and all
+applicable readiness gates first; freeze the existing Task Card and the
+initial implementation prompt before invoking the checkpoint. Supply the
+actual repository, plan/task IDs, RRI, paths, permitted edit/test/review
+capabilities and exact card/prompt files using the documented adapter
+command. The existing configured HAA endpoint and owner ceremony must be
+available; no new local service or OS provisioning is required by this
+guide. Dispatch only on fresh exit 0 / CHECKPOINT_PASS, matching card and
+prompt hashes and unexpired result. Rejection, expiry, unavailability or
+input drift blocks dispatch; no automatic retry or fallback approval.
+Retain only non-secret request/execution identifiers and result in the
+existing task ledger. No HAA calls for tasks with no required approval or
+where the owner retains the ordinary approval channel. HAA does not
+replace readiness, QA, independent review, commit/push approval, waiver
+rules or final verification; it is a cooperative task-start gate, not
+shell containment or a new approval for every implementation step.
+
+The Low-band local-attempt requirement and the provider-aware peer
+readiness gate remain unchanged; HAA is not a reviewer or a delegation
+exception.
+```
+
+### DubBridge
+
+Reviewed main `ec3314ef594f8afcd25b487ef946789ee74cb7ee`; guide blob `dc88674d76bf562ff516860eeb223ef470b057ce`.
+Target `docs/playbooks/AGENT_WORKFLOW_GUIDE.md`; insert immediately before `### Human-selected fallback checkpoint (ADR-039)`.
+Docs/policy-only tasks have the existing phase-review exemption (record
+n/a, not a waiver); applicable deterministic docs QA and existing
+commit/push/closure checks still apply. The actual checkout and QA are
+unavailable in the remote session. Do not publish without satisfying
+those checks. No change to ADR-038/040 routing or the parent approval
+envelope.
+
+```markdown
+### Optional HAA task-start approval
+
+When the existing policy requires task-start human approval and the owner
+explicitly selects HAA as the approval channel for that task, the
+orchestrator uses the [validated HAA checkpoint](https://github.com/krukmat/human-approval-authority/blob/20880e01351aa49154894b15d1c5cb28229511e5/integrations/workflow-runtime/README.md#minimal-workflow-guide-insertion-contract-not-installed)
+instead of the ordinary approval interaction. Resolve scope, RRI and all
+applicable readiness gates first; freeze the existing Task Card and the
+initial implementation prompt before invoking the checkpoint. Supply the
+actual repository, plan/task IDs, RRI, paths, permitted edit/test/review
+capabilities and exact card/prompt files using the documented adapter
+command. The existing configured HAA endpoint and owner ceremony must be
+available; no new local service or OS provisioning is required by this
+guide. Dispatch only on fresh exit 0 / CHECKPOINT_PASS, matching card and
+prompt hashes and unexpired result. Rejection, expiry, unavailability or
+input drift blocks dispatch; no automatic retry or fallback approval.
+Retain only non-secret request/execution identifiers and result in the
+existing task ledger. No HAA calls for tasks with no required approval or
+where the owner retains the ordinary approval channel. HAA does not
+replace readiness, QA, independent review, commit/push approval, waiver
+rules or final verification; it is a cooperative task-start gate, not
+shell containment or a new approval for every implementation step.
+
+The parent approval envelope continues to govern decomposed Low leaves.
+Do not add HAA ceremonies for repair attempts or routing changes already
+within that approved envelope; a materially changed approval scope must
+follow existing policy. Keep every independently required packet-readiness
+review.
+```
+
+### Shared completion
+
+The insertion anchors were found exactly once in both pinned guides,
+and removing each proposed insertion reconstructs its original guide
+exactly. This is a static scope check, not a repository QA or independent
+review verdict. Before applying, reconcile current HEADs and policy
+sources. Use the existing repository task ledger, review and QA gates
+without adding reviewers or separate infrastructure. A real opted-in
+task with an existing required HITL checkpoint will exercise W5.T5
+at normal resumption; do not generate another synthetic task. If the
+configured HAA owner channel is absent, block and report; do not
+silently provision a replacement. No active hooks or product guide
+changes, no production activation yet.
+
 ## Final local validation (completed synthetic physical gate)
 
 Use the existing clean main checkout and venv, without sudo or worktrees:
