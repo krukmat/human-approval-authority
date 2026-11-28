@@ -1,3 +1,13 @@
+# FROZEN — protected host acceptance (historical)
+
+Owner-approved scope reduction: do not execute this runbook or any
+provisioning commands for the active HAA + Workflow integration.
+The UID reuse decision and previous evidence are retained only for an
+explicitly approved future security-hardening workstream.
+Active plan: README.md and plan-status.json. No host changes required.
+
+## Historical runbook
+
 # Shared Workflow HAA host acceptance — candidate
 
 Status: BLOCKED_PENDING_HOST_EVIDENCE; activation NO_GO.

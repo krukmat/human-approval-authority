@@ -2,165 +2,52 @@
   "schema": "workflow-authority-plan.v1",
   "source": "krukmat/dubbridge@bdae32e1e9167a18b12b8911df71d5982d25998c",
   "activation": "NO_GO",
-  "state": "HOST_INVENTORY_RECONCILED_EXCLUSIVE_REUSE_PENDING",
+  "state": "SIMPLIFIED_CHECKPOINT_CANDIDATE_LOCAL_GATE_PENDING",
   "tasks": [
     {
       "id": "W1.T1",
       "status": "DONE",
-      "evidence": "README.md; source-inventory.json"
+      "evidence": "README.md; HOST-ACCEPTANCE.md; historical ledger preserved"
     },
     {
       "id": "W1.T2",
       "status": "DONE",
-      "evidence": "README.md; source-inventory.json"
-    },
-    {
-      "id": "W1.T3",
-      "status": "DONE",
-      "evidence": "README.md; source-inventory.json"
-    },
-    {
-      "id": "W1.T4",
-      "status": "DONE",
-      "evidence": "README.md; source-inventory.json"
+      "evidence": "README.md; existing authority/client/contracts/grants/policy/profile reuse"
     },
     {
       "id": "W2.T1",
-      "status": "DESIGN_DONE",
-      "evidence": "README.md; workflow-actions.ts; policy.py"
+      "status": "DONE",
+      "evidence": "README.md; checkpoint invoked by existing HITL controller before prompt dispatch"
     },
     {
       "id": "W2.T2",
-      "status": "DESIGN_DONE",
-      "evidence": "README.md; workflow-actions.ts; policy.py"
+      "status": "IMPLEMENTED_UNVALIDATED",
+      "evidence": "scripts/haa/adapter.py task_checkpoint; existing API and profile"
     },
     {
       "id": "W2.T3",
-      "status": "DESIGN_DONE",
-      "evidence": "README.md; workflow-actions.ts; policy.py"
-    },
-    {
-      "id": "W2.T4",
-      "status": "DESIGN_DONE",
-      "evidence": "README.md; workflow-actions.ts; policy.py"
-    },
-    {
-      "id": "W2.T5",
-      "status": "DESIGN_DONE",
-      "evidence": "README.md; workflow-actions.ts; policy.py"
-    },
-    {
-      "id": "W2.T6",
-      "status": "DESIGN_DONE",
-      "evidence": "README.md; workflow-actions.ts; policy.py"
+      "status": "IMPLEMENTED_UNVALIDATED",
+      "evidence": "scripts/haa/adapter.py; task_checkpoint_test.py"
     },
     {
       "id": "W3.T1",
-      "status": "PORTED_PORTABLE_PASS",
-      "gate": "PASS_PORTABLE_ONLY"
+      "status": "GUIDE_CONTRACT_PREPARED",
+      "evidence": "README.md; HAA repo contract; project guides unchanged"
     },
     {
       "id": "W3.T2",
-      "status": "PORTED_PORTABLE_PASS",
-      "gate": "PASS_PORTABLE_ONLY"
+      "status": "COMPATIBILITY_DESIGN_PREPARED",
+      "evidence": "same checkpoint independent of selected model; no routing changes; prior native contract evidence historical only"
     },
     {
       "id": "W3.T3",
-      "status": "PORTED_PORTABLE_PASS",
-      "gate": "PASS_PORTABLE_ONLY"
-    },
-    {
-      "id": "W3.T4",
-      "status": "PORTED_PORTABLE_PASS",
-      "gate": "PASS_PORTABLE_ONLY"
-    },
-    {
-      "id": "W3.T5",
-      "status": "PORTED_PORTABLE_PASS",
-      "gate": "PASS_PORTABLE_ONLY"
-    },
-    {
-      "id": "W3.T6",
-      "status": "PORTED_PORTABLE_PASS",
-      "gate": "PASS_PORTABLE_ONLY"
-    },
-    {
-      "id": "W3.T7",
-      "status": "PORTED_PORTABLE_PASS",
-      "gate": "PASS_PORTABLE_ONLY"
-    },
-    {
-      "id": "W3.T8",
-      "status": "PORTED_PORTABLE_PASS",
-      "gate": "PASS_PORTABLE_ONLY"
+      "status": "REGRESSION_PREPARED_NOT_RUN",
+      "evidence": "task_checkpoint_test.py; certify.py auto-discovers; existing physical smoke checkpoint mode"
     },
     {
       "id": "W4.T1",
-      "status": "DONE_ANALYSIS"
-    },
-    {
-      "id": "W4.T2",
-      "status": "DONE_DESIGN"
-    },
-    {
-      "id": "W4.T3",
-      "status": "TASK_CARD_PORTABLE_AND_NATIVE_CONTRACT_PASS"
-    },
-    {
-      "id": "W4.T4",
-      "status": "BATCH_AND_NATIVE_CONTRACT_PASS_ISOLATED_EXECUTION_PENDING"
-    },
-    {
-      "id": "W4.T5",
-      "status": "HANDOFF_REGRESSION_PASS_PHYSICAL_PENDING"
-    },
-    {
-      "id": "W4.T6",
-      "status": "POLICY_PIN_REGRESSION_PASS_OPERATIONAL_PENDING"
-    },
-    {
-      "id": "W4.T7",
-      "status": "NATIVE_CONTRACT_PASS_PROJECT_HOOKS_UNCHANGED"
-    },
-    {
-      "id": "W5.T1",
-      "status": "PORTABLE_REGRESSION_PASS",
-      "gate": "HOST_ADVERSARIAL_VALIDATION_PENDING"
-    },
-    {
-      "id": "W5.T2",
-      "status": "PORTABLE_REGRESSION_PASS",
-      "gate": "HOST_ADVERSARIAL_VALIDATION_PENDING"
-    },
-    {
-      "id": "W5.T3",
-      "status": "PORTABLE_REGRESSION_PASS",
-      "gate": "HOST_ADVERSARIAL_VALIDATION_PENDING"
-    },
-    {
-      "id": "W5.T4",
-      "status": "PORTABLE_REGRESSION_PASS",
-      "gate": "HOST_ADVERSARIAL_VALIDATION_PENDING"
-    },
-    {
-      "id": "W5.T5",
-      "status": "SYNTHETIC_MICROBENCHMARK_PASS"
-    },
-    {
-      "id": "W5.T6",
-      "status": "MATCHED_COMPARATOR_REGRESSION_PASS_FULL_AB_NOT_MEASURED"
-    },
-    {
-      "id": "W5.T7",
-      "status": "PORTABLE_AND_NATIVE_CONTRACT_GATE_PASS_PHYSICAL_PENDING"
-    },
-    {
-      "id": "W5.T8",
-      "status": "CONTRACT_COMMAND_PASS_FINAL_HOST_GATE_PENDING"
-    },
-    {
-      "id": "W6.T1",
-      "status": "PENDING_LOCAL_OWNER"
+      "status": "PENDING_LOCAL_OWNER",
+      "evidence": "one synthetic Touch ID checkpoint after regression; production activation not requested"
     }
   ],
   "observed_tests": {
@@ -371,6 +258,182 @@
         "OWNER_REVIEWED_INSTALLATION_MANIFEST",
         "HOST_EMPIRICAL_AND_COMPOSED_AUTHORITY_GATES"
       ]
+    },
+    "simplified_checkpoint": {
+      "status": "SOURCE_PREPARED_NOT_RUN",
+      "new_test_cases": 11,
+      "previous_regression_sha": "dc3e56d36cb2ca24b5d9b2f2034311fc7923f94a",
+      "previous_regression_pass": 203,
+      "previous_regression_skipped": 1,
+      "physical_gate": "NOT_RUN",
+      "actual_product_guide_rollout": "NOT_DONE",
+      "host_isolation": "OUT_OF_SCOPE"
     }
+  },
+  "frozen_protected_runtime": {
+    "state": "HOST_INVENTORY_RECONCILED_EXCLUSIVE_REUSE_PENDING",
+    "checkpoint": "ed7ecdd33bce8486a04146785d4ccea975342a2b",
+    "tasks": [
+      {
+        "id": "W1.T1",
+        "status": "DONE",
+        "evidence": "README.md; source-inventory.json"
+      },
+      {
+        "id": "W1.T2",
+        "status": "DONE",
+        "evidence": "README.md; source-inventory.json"
+      },
+      {
+        "id": "W1.T3",
+        "status": "DONE",
+        "evidence": "README.md; source-inventory.json"
+      },
+      {
+        "id": "W1.T4",
+        "status": "DONE",
+        "evidence": "README.md; source-inventory.json"
+      },
+      {
+        "id": "W2.T1",
+        "status": "DESIGN_DONE",
+        "evidence": "README.md; workflow-actions.ts; policy.py"
+      },
+      {
+        "id": "W2.T2",
+        "status": "DESIGN_DONE",
+        "evidence": "README.md; workflow-actions.ts; policy.py"
+      },
+      {
+        "id": "W2.T3",
+        "status": "DESIGN_DONE",
+        "evidence": "README.md; workflow-actions.ts; policy.py"
+      },
+      {
+        "id": "W2.T4",
+        "status": "DESIGN_DONE",
+        "evidence": "README.md; workflow-actions.ts; policy.py"
+      },
+      {
+        "id": "W2.T5",
+        "status": "DESIGN_DONE",
+        "evidence": "README.md; workflow-actions.ts; policy.py"
+      },
+      {
+        "id": "W2.T6",
+        "status": "DESIGN_DONE",
+        "evidence": "README.md; workflow-actions.ts; policy.py"
+      },
+      {
+        "id": "W3.T1",
+        "status": "PORTED_PORTABLE_PASS",
+        "gate": "PASS_PORTABLE_ONLY"
+      },
+      {
+        "id": "W3.T2",
+        "status": "PORTED_PORTABLE_PASS",
+        "gate": "PASS_PORTABLE_ONLY"
+      },
+      {
+        "id": "W3.T3",
+        "status": "PORTED_PORTABLE_PASS",
+        "gate": "PASS_PORTABLE_ONLY"
+      },
+      {
+        "id": "W3.T4",
+        "status": "PORTED_PORTABLE_PASS",
+        "gate": "PASS_PORTABLE_ONLY"
+      },
+      {
+        "id": "W3.T5",
+        "status": "PORTED_PORTABLE_PASS",
+        "gate": "PASS_PORTABLE_ONLY"
+      },
+      {
+        "id": "W3.T6",
+        "status": "PORTED_PORTABLE_PASS",
+        "gate": "PASS_PORTABLE_ONLY"
+      },
+      {
+        "id": "W3.T7",
+        "status": "PORTED_PORTABLE_PASS",
+        "gate": "PASS_PORTABLE_ONLY"
+      },
+      {
+        "id": "W3.T8",
+        "status": "PORTED_PORTABLE_PASS",
+        "gate": "PASS_PORTABLE_ONLY"
+      },
+      {
+        "id": "W4.T1",
+        "status": "DONE_ANALYSIS"
+      },
+      {
+        "id": "W4.T2",
+        "status": "DONE_DESIGN"
+      },
+      {
+        "id": "W4.T3",
+        "status": "TASK_CARD_PORTABLE_AND_NATIVE_CONTRACT_PASS"
+      },
+      {
+        "id": "W4.T4",
+        "status": "BATCH_AND_NATIVE_CONTRACT_PASS_ISOLATED_EXECUTION_PENDING"
+      },
+      {
+        "id": "W4.T5",
+        "status": "HANDOFF_REGRESSION_PASS_PHYSICAL_PENDING"
+      },
+      {
+        "id": "W4.T6",
+        "status": "POLICY_PIN_REGRESSION_PASS_OPERATIONAL_PENDING"
+      },
+      {
+        "id": "W4.T7",
+        "status": "NATIVE_CONTRACT_PASS_PROJECT_HOOKS_UNCHANGED"
+      },
+      {
+        "id": "W5.T1",
+        "status": "PORTABLE_REGRESSION_PASS",
+        "gate": "HOST_ADVERSARIAL_VALIDATION_PENDING"
+      },
+      {
+        "id": "W5.T2",
+        "status": "PORTABLE_REGRESSION_PASS",
+        "gate": "HOST_ADVERSARIAL_VALIDATION_PENDING"
+      },
+      {
+        "id": "W5.T3",
+        "status": "PORTABLE_REGRESSION_PASS",
+        "gate": "HOST_ADVERSARIAL_VALIDATION_PENDING"
+      },
+      {
+        "id": "W5.T4",
+        "status": "PORTABLE_REGRESSION_PASS",
+        "gate": "HOST_ADVERSARIAL_VALIDATION_PENDING"
+      },
+      {
+        "id": "W5.T5",
+        "status": "SYNTHETIC_MICROBENCHMARK_PASS"
+      },
+      {
+        "id": "W5.T6",
+        "status": "MATCHED_COMPARATOR_REGRESSION_PASS_FULL_AB_NOT_MEASURED"
+      },
+      {
+        "id": "W5.T7",
+        "status": "PORTABLE_AND_NATIVE_CONTRACT_GATE_PASS_PHYSICAL_PENDING"
+      },
+      {
+        "id": "W5.T8",
+        "status": "CONTRACT_COMMAND_PASS_FINAL_HOST_GATE_PENDING"
+      },
+      {
+        "id": "W6.T1",
+        "status": "PENDING_LOCAL_OWNER"
+      }
+    ],
+    "activation": "NO_GO",
+    "disposition": "FROZEN_OUT_OF_SCOPE; no deployment or host certification required by simplified plan"
   }
 }

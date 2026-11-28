@@ -1,3 +1,26 @@
+# Integration status — simplified HITL checkpoint (active)
+
+The owner-approved minimal plan supersedes the protected-runtime deployment
+plan below. See README.md for the active contract and plan-status.json for
+the nine-task ledger. The old host gate, provisioning, protected batch
+executor and isolation work are frozen and not prerequisites. Existing
+portable/native runner evidence is historical and does not prove the new
+checkpoint or rollout.
+
+The only implementation change for the active workflow is the required
+task-start checkpoint in the existing adapter, with regression cases and an
+opt-in mode of the existing physical smoke. Other checkpoints, RRI, routing,
+QA, reviewers and product repositories remain unchanged. No new model
+calls, users or persistent services. Rejection, drift, timeout, invalid
+grant and transport failures block; the controller supplies actual input
+and dispatches unchanged bytes only on fresh success.
+
+Local regression and physical acceptance not run yet; activation NO_GO.
+The product guides have not been edited or installed. This is a ready-to-
+adopt cooperative contract, not mandatory OS enforcement.
+
+## Historical integration log (frozen scope)
+
 # Candidate integration and certification handoff
 
 The code is a standalone companion under this directory. The server profiles are additive and disabled by default; the companion is published on HAA main by owner instruction; original DubBridge branches are untouched. No HAA protocol version change.
