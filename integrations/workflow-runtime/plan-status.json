@@ -2,7 +2,7 @@
   "schema": "workflow-authority-plan.v1",
   "source": "krukmat/dubbridge@bdae32e1e9167a18b12b8911df71d5982d25998c",
   "activation": "NO_GO",
-  "state": "SIMPLIFIED_CHECKPOINT_CANDIDATE_LOCAL_GATE_PENDING",
+  "state": "SIMPLIFIED_CHECKPOINT_PHYSICAL_PASS_ADOPTION_PENDING",
   "tasks": [
     {
       "id": "W1.T1",
@@ -21,12 +21,12 @@
     },
     {
       "id": "W2.T2",
-      "status": "IMPLEMENTED_UNVALIDATED",
+      "status": "PASS_SYNTHETIC_PHYSICAL_CHECKPOINT",
       "evidence": "scripts/haa/adapter.py task_checkpoint; existing API and profile"
     },
     {
       "id": "W2.T3",
-      "status": "IMPLEMENTED_UNVALIDATED",
+      "status": "IMPLEMENTED_POSITIVE_PATH_PASS_REGRESSION_LOG_NOT_SUPPLIED",
       "evidence": "scripts/haa/adapter.py; task_checkpoint_test.py"
     },
     {
@@ -41,13 +41,13 @@
     },
     {
       "id": "W3.T3",
-      "status": "REGRESSION_PREPARED_NOT_RUN",
+      "status": "REGRESSION_PREPARED_CHAIN_PRECONDITIONS_INFERRED_COUNTS_NOT_SUPPLIED",
       "evidence": "task_checkpoint_test.py; certify.py auto-discovers; existing physical smoke checkpoint mode"
     },
     {
       "id": "W4.T1",
-      "status": "PENDING_LOCAL_OWNER",
-      "evidence": "one synthetic Touch ID checkpoint after regression; production activation not requested"
+      "status": "PASS_COOPERATIVE_CHECKPOINT_PHYSICAL",
+      "evidence": "Owner console excerpt at 20880e01351aa49154894b15d1c5cb28229511e5; native signed macOS approver and Secure Enclave; waiting checkpoint; verified Touch ID; unchanged synthetic Git target; no model executed"
     }
   ],
   "observed_tests": {
@@ -260,14 +260,26 @@
       ]
     },
     "simplified_checkpoint": {
-      "status": "SOURCE_PREPARED_NOT_RUN",
+      "status": "PASS_COOPERATIVE_CHECKPOINT_PHYSICAL",
       "new_test_cases": 11,
       "previous_regression_sha": "dc3e56d36cb2ca24b5d9b2f2034311fc7923f94a",
       "previous_regression_pass": 203,
       "previous_regression_skipped": 1,
-      "physical_gate": "NOT_RUN",
+      "physical_gate": "PASS",
       "actual_product_guide_rollout": "NOT_DONE",
-      "host_isolation": "OUT_OF_SCOPE"
+      "host_isolation": "OUT_OF_SCOPE_NOT_TESTED",
+      "tested_head": "20880e01351aa49154894b15d1c5cb28229511e5",
+      "source": "owner-supplied final console excerpt",
+      "profile": "workflow.task.start.v1",
+      "approver_build_and_signature": "PASS",
+      "secure_enclave_enrollment": "PASS",
+      "waiting_before_approval": "PASS",
+      "task_card_prompt_checkpoint": "PASS",
+      "synthetic_target_unchanged": "PASS",
+      "actual_model_dispatch": "NOT_RUN",
+      "actual_protected_runner": "NOT_CERTIFIED_OUT_OF_SCOPE",
+      "full_regression": "Earlier &&-chained steps necessarily returned zero if the prescribed command was executed as written; the supplied excerpt contains no individual regression counts or output; do not infer counts.",
+      "activation": "NO_GO"
     }
   },
   "frozen_protected_runtime": {

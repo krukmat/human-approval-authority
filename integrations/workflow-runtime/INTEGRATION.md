@@ -15,9 +15,27 @@ calls, users or persistent services. Rejection, drift, timeout, invalid
 grant and transport failures block; the controller supplies actual input
 and dispatches unchanged bytes only on fresh success.
 
-Local regression and physical acceptance not run yet; activation NO_GO.
+Physical synthetic acceptance PASS on the owner Mac at `20880e0`. The supplied
+excerpt is the final stage; earlier regression counts are not supplied.
 The product guides have not been edited or installed. This is a ready-to-
-adopt cooperative contract, not mandatory OS enforcement.
+adopt cooperative contract, not mandatory OS enforcement. Activation NO_GO.
+
+## Simplified plan — physical acceptance
+
+Owner console reports `PASS_COOPERATIVE_CHECKPOINT_PHYSICAL` on HAA main
+`20880e01351aa49154894b15d1c5cb28229511e5`. Actual provisioned macOS approver built and signature verified;
+Secure Enclave authenticator enrolled; checkpoint waited before dispatch;
+Touch ID approval accepted for SYNTHETIC TASK START; exact card/prompt
+checkpoint passed; no task or model executed, synthetic Git target unchanged.
+The only profile exercised was workflow.task.start.v1. Earlier commands were
+chained with && in the prescribed invocation, but individual regression output
+and counts are not present in the excerpt. No new test totals asserted.
+Host isolation NOT_TESTED and protected runner NOT_CERTIFIED are intentionally
+outside the simplified scope, not additional acceptance requirements. The
+checkpoint is cooperative and no actual product hook or active approval
+channel was installed. GO for minimal opt-in adoption under existing project
+policies; activation NO_GO. The prior host work remains frozen. No project
+repository modifications, no additional complexity or ceremony proposed.
 
 ## Historical integration log (frozen scope)
 

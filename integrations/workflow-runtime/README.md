@@ -4,8 +4,8 @@
 runtime workstream is frozen at `ed7ecdd33bce8486a04146785d4ccea975342a2b`. Preserve the code, tests and
 historical evidence, but do not provision macOS identities, protected targets,
 leases, IPC, or verifiers for this plan. No additional repository, model,
-reviewer, daemon, or CI pipeline. Production rollout remains NO_GO pending
-functional acceptance.
+reviewer, daemon, or CI pipeline. Synthetic functional acceptance PASS at `20880e0`; production rollout remains
+NO_GO until explicitly adopted in a project's existing workflow.
 
 ## Active contract
 
@@ -91,7 +91,7 @@ this code. No Fénix or DubBridge files were modified; the common guide
 insertion is prepared here for later adoption under each project's own
 rules. Do not claim installed hooks or automatic interception of prompts.
 
-## Final local validation
+## Final local validation (completed synthetic physical gate)
 
 Use the existing clean main checkout and venv, without sudo or worktrees:
 
@@ -114,8 +114,15 @@ unchanged target, then cleans its temporary state. It does not require the
 frozen host gate or a plan-close ceremony. A failed stage blocks subsequent
 stages. Existing Node dependencies/signing and native approver prerequisites
 must be available; do not silently install additional infrastructure.
-Expected final status PASS_COOPERATIVE_CHECKPOINT_PHYSICAL. No production
-activation or rollout follows automatically.
+Owner supplied final console output: PASS_COOPERATIVE_CHECKPOINT_PHYSICAL at
+`20880e01351aa49154894b15d1c5cb28229511e5`. No real model or project task was
+executed. Earlier regression output was not supplied; the prescribed && chain
+would have required those commands to exit zero before the physical stage.
+No test counts are asserted for this run. No further host or biometric test
+is required for this synthetic gate. No production activation or rollout follows
+automatically. The next step, if selected by the owner, is the minimal existing
+HITL guide insertion, respecting each project's own governance. No additional
+architecture is proposed.
 
 ## Historical protected runtime plan (frozen, not active)
 
